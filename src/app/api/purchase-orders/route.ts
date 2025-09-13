@@ -9,8 +9,9 @@ const connectionConfig = {
 };
 
 export async function GET() {
+  let connection;
   try {
-    const connection = await mysql.createConnection(connectionConfig);
+    connection = await mysql.createConnection(connectionConfig);
     
     const [rows] = await connection.execute(
       'SELECT * FROM purchase_orders ORDER BY group_name, name'
@@ -19,19 +20,28 @@ export async function GET() {
     await connection.end();
     
     return NextResponse.json(rows);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching purchase orders:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch purchase orders' },
-      { status: 500 }
-    );
+    
+    // Close connection if it exists
+    if (connection) {
+      try {
+        await connection.end();
+      } catch (closeError) {
+        console.error('Error closing database connection:', closeError);
+      }
+    }
+    
+    // Return empty array as fallback instead of error object
+    return NextResponse.json([]);
   }
 }
 
 export async function POST(request: NextRequest) {
+  let connection;
   try {
     const data = await request.json();
-    const connection = await mysql.createConnection(connectionConfig);
+    connection = await mysql.createConnection(connectionConfig);
     
     const {
       name,
@@ -101,29 +111,105 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      // Regular update
-      await connection.execute(
-        `UPDATE purchase_orders SET 
-         januari = ?, februari = ?, maret = ?, april = ?, mei = ?, 
-         juni = ?, juli = ?, agustus = ?, september = ?, oktober = ?, 
-         november = ?, desember = ?, totalQtyPO = ?, totalValueSales = ?, targetGroup = ?
-         WHERE name = ? AND group_name = ?`,
-        [
-          januari, februari, maret, april, mei,
-          juni, juli, agustus, september, oktober,
-          november, desember, totalQtyPO, totalValueSales, targetGroup,
-          name, group_name
-        ]
+      // Check if record already exists
+      const [existingRows] = await connection.execute(
+        'SELECT * FROM purchase_orders WHERE name = ? AND group_name = ?',
+        [name, group_name]
       );
+      
+      if ((existingRows as any[]).length > 0) {
+        // Regular update
+        await connection.execute(
+          `UPDATE purchase_orders SET 
+           januari = ?, februari = ?, maret = ?, april = ?, mei = ?, 
+           juni = ?, juli = ?, agustus = ?, september = ?, oktober = ?, 
+           november = ?, desember = ?, totalQtyPO = ?, totalValueSales = ?, targetGroup = ?
+           WHERE name = ? AND group_name = ?`,
+          [
+            januari, februari, maret, april, mei,
+            juni, juli, agustus, september, oktober,
+            november, desember, totalQtyPO, totalValueSales, targetGroup,
+            name, group_name
+          ]
+        );
+      } else {
+        // Insert new record
+        await connection.execute(
+          `INSERT INTO purchase_orders 
+           (name, group_name, januari, februari, maret, april, mei, 
+            juni, juli, agustus, september, oktober, 
+            november, desember, totalQtyPO, totalValueSales, targetGroup) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            name, group_name, januari, februari, maret, april, mei,
+            juni, juli, agustus, september, oktober,
+            november, desember, totalQtyPO, totalValueSales, targetGroup
+          ]
+        );
+      }
     }
     
     await connection.end();
     
-    return NextResponse.json({ message: 'Purchase order updated successfully' });
-  } catch (error) {
-    console.error('Error updating purchase order:', error);
+    return NextResponse.json({ message: 'Purchase order saved successfully' });
+  } catch (error: any) {
+    console.error('Error saving purchase order:', error);
+    
+    // Close connection if it exists
+    if (connection) {
+      try {
+        await connection.end();
+      } catch (closeError) {
+        console.error('Error closing database connection:', closeError);
+      }
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to update purchase order' },
+      { error: 'Failed to save purchase order', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  let connection;
+  try {
+    const data = await request.json();
+    connection = await mysql.createConnection(connectionConfig);
+    
+    const { name, group_name } = data;
+    
+    // Delete the record
+    const [result] = await connection.execute(
+      'DELETE FROM purchase_orders WHERE name = ? AND group_name = ?',
+      [name, group_name]
+    );
+    
+    await connection.end();
+    
+    // Check if any rows were affected
+    if ((result as any).affectedRows > 0) {
+      return NextResponse.json({ message: 'Purchase order deleted successfully' });
+    } else {
+      return NextResponse.json(
+        { error: 'Purchase order not found' },
+        { status: 404 }
+      );
+    }
+  } catch (error: any) {
+    console.error('Error deleting purchase order:', error);
+    
+    // Close connection if it exists
+    if (connection) {
+      try {
+        await connection.end();
+      } catch (closeError) {
+        console.error('Error closing database connection:', closeError);
+      }
+    }
+    
+    return NextResponse.json(
+      { error: 'Failed to delete purchase order', details: error.message },
       { status: 500 }
     );
   }

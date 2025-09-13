@@ -109,36 +109,60 @@ export default function DashboardPage() {
   const fetchPurchaseOrders = async () => {
     try {
       const response = await fetch('/api/purchase-orders');
-      const result = await response.json();
       
-      if (response.ok) {
-        // Transform database data to match our interface
-        const transformedData = result.map((item: any, index: number) => ({
-          no: index + 1,
-          name: item.name,
-          januari: item.januari || 0,
-          februari: item.februari || 0,
-          maret: item.maret || 0,
-          april: item.april || 0,
-          mei: item.mei || 0,
-          juni: item.juni || 0,
-          juli: item.juli || 0,
-          agustus: item.agustus || 0,
-          september: item.september || 0,
-          oktober: item.oktober || 0,
-          november: item.november || 0,
-          desember: item.desember || 0,
-          totalQtyPO: item.totalQtyPO || 0,
-          totalValueSales: item.totalValueSales || 0,
-          group: item.group_name,
-          targetGroup: item.targetGroup || 0,
-          achieve: item.achieve || 0
-        }));
-        setData(transformedData);
-      } else {
+      // Check if response is ok
+      if (!response.ok) {
+        console.error(`HTTP error! status: ${response.status}`);
         // Fallback to sample data if API fails
         setData(sampleData);
+        setLoading(false);
+        return;
       }
+      
+      // Check if response has content
+      const text = await response.text();
+      if (!text) {
+        console.error('Empty response from API');
+        setData(sampleData);
+        setLoading(false);
+        return;
+      }
+      
+      // Try to parse JSON
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse JSON:', parseError);
+        console.error('Response text:', text);
+        setData(sampleData);
+        setLoading(false);
+        return;
+      }
+      
+      // Transform database data to match our interface
+      const transformedData = result.map((item: any, index: number) => ({
+        no: index + 1,
+        name: item.name,
+        januari: item.januari || 0,
+        februari: item.februari || 0,
+        maret: item.maret || 0,
+        april: item.april || 0,
+        mei: item.mei || 0,
+        juni: item.juni || 0,
+        juli: item.juli || 0,
+        agustus: item.agustus || 0,
+        september: item.september || 0,
+        oktober: item.oktober || 0,
+        november: item.november || 0,
+        desember: item.desember || 0,
+        totalQtyPO: item.totalQtyPO || 0,
+        totalValueSales: item.totalValueSales || 0,
+        group: item.group_name,
+        targetGroup: item.targetGroup || 0,
+        achieve: item.achieve || 0
+      }));
+      setData(transformedData);
     } catch (error) {
       console.error('Error fetching purchase orders:', error);
       // Fallback to sample data
@@ -152,7 +176,113 @@ export default function DashboardPage() {
     return new Intl.NumberFormat('id-ID').format(value);
   };
 
-  const handleCellEdit = (rowIndex: number, column: string, currentValue: number) => {
+  const handleDeletePerson = async (rowIndex: number) => {
+    const personToDelete = data[rowIndex];
+    
+    // Confirmation
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${personToDelete.name}?`)) {
+      return;
+    }
+    
+    // Delete from database first
+    try {
+      const response = await fetch('/api/purchase-orders', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: personToDelete.name,
+          group_name: personToDelete.group
+        }),
+      });
+      
+      if (response.ok) {
+        // Remove from UI only if database delete is successful
+        const newData = data.filter((_, index) => index !== rowIndex);
+        // Update row numbers
+        const updatedData = newData.map((item, index) => ({
+          ...item,
+          no: index + 1
+        }));
+        setData(updatedData);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to delete person from database:', errorData);
+        alert(`Gagal menghapus person: ${errorData.error || 'Silakan coba lagi.'}`);
+      }
+    } catch (error: any) {
+      console.error('Error deleting person:', error);
+      alert(`Terjadi kesalahan saat menghapus person: ${error.message || 'Silakan coba lagi.'}`);
+    }
+  };
+
+  const handleAddPerson = async () => {
+    const newPerson: PurchaseOrderData = {
+      no: data.length + 1,
+      name: "New Person",
+      januari: 0,
+      februari: 0,
+      maret: 0,
+      april: 0,
+      mei: 0,
+      juni: 0,
+      juli: 0,
+      agustus: 0,
+      september: 0,
+      oktober: 0,
+      november: 0,
+      desember: 0,
+      totalQtyPO: 0,
+      totalValueSales: 0,
+      group: "Other",
+      targetGroup: 0
+    };
+    
+    // Save to database first
+    try {
+      const response = await fetch('/api/purchase-orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newPerson.name,
+          group_name: newPerson.group,
+          januari: newPerson.januari,
+          februari: newPerson.februari,
+          maret: newPerson.maret,
+          april: newPerson.april,
+          mei: newPerson.mei,
+          juni: newPerson.juni,
+          juli: newPerson.juli,
+          agustus: newPerson.agustus,
+          september: newPerson.september,
+          oktober: newPerson.oktober,
+          november: newPerson.november,
+          desember: newPerson.desember,
+          totalQtyPO: newPerson.totalQtyPO,
+          totalValueSales: newPerson.totalValueSales,
+          targetGroup: newPerson.targetGroup
+        }),
+      });
+      
+      if (response.ok) {
+        // Add to UI only if database save is successful
+        const newData = [...data, newPerson];
+        setData(newData);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to save person to database:', errorData);
+        alert(`Gagal menambahkan person: ${errorData.error || 'Silakan coba lagi.'}`);
+      }
+    } catch (error: any) {
+      console.error('Error saving person:', error);
+      alert(`Terjadi kesalahan saat menambahkan person: ${error.message || 'Silakan coba lagi.'}`);
+    }
+  };
+
+  const handleCellEdit = (rowIndex: number, column: string, currentValue: number | string) => {
     setEditingCell({ row: rowIndex, col: column });
     setEditValue(currentValue.toString());
   };
@@ -174,21 +304,27 @@ export default function DashboardPage() {
         const numericValue = parseFloat(editValue) || 0;
         (newData[editingCell.row] as any)[editingCell.col] = numericValue;
         
-        // Recalculate totals
-        const totalValueSales = newData[editingCell.row].januari + 
-                              newData[editingCell.row].februari + 
-                              newData[editingCell.row].maret + 
-                              newData[editingCell.row].april + 
-                              newData[editingCell.row].mei + 
-                              newData[editingCell.row].juni + 
-                              newData[editingCell.row].juli + 
-                              newData[editingCell.row].agustus +
-                              newData[editingCell.row].september +
-                              newData[editingCell.row].oktober +
-                              newData[editingCell.row].november +
-                              newData[editingCell.row].desember;
-        
-        newData[editingCell.row].totalValueSales = totalValueSales;
+        // Recalculate totals if editing monthly values
+        if (editingCell.col !== 'totalQtyPO') {
+          const totalValueSales = newData[editingCell.row].januari + 
+                                newData[editingCell.row].februari + 
+                                newData[editingCell.row].maret + 
+                                newData[editingCell.row].april + 
+                                newData[editingCell.row].mei + 
+                                newData[editingCell.row].juni + 
+                                newData[editingCell.row].juli + 
+                                newData[editingCell.row].agustus +
+                                newData[editingCell.row].september +
+                                newData[editingCell.row].oktober +
+                                newData[editingCell.row].november +
+                                newData[editingCell.row].desember;
+          
+          newData[editingCell.row].totalValueSales = totalValueSales;
+          
+          // Recalculate totalQtyPO as sum of all monthly values
+          const totalQtyPO = totalValueSales; // For now, using the same value
+          newData[editingCell.row].totalQtyPO = totalQtyPO;
+        }
       }
       
       setData(newData);
@@ -420,6 +556,10 @@ export default function DashboardPage() {
     return (totalSales / totalTarget) * 100;
   };
 
+  const getTotalQtyPO = () => {
+    return data.reduce((sum, item) => sum + item.totalQtyPO, 0);
+  };
+
   const getMonthlyTotals = () => {
     const months = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -470,7 +610,7 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
@@ -489,6 +629,24 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Qty PO</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{getTotalQtyPO().toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground">
+                Jumlah keseluruhan purchase order
+              </div>
+              <div className="text-xs text-muted-foreground mt-2">
+                💡 Total quantity dari semua PO
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Group Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
           {availableGroups.map((group) => {
             const targetGroup = groupTargets[group] || 0;
             const groupColors: {[key: string]: string} = {
@@ -609,10 +767,17 @@ export default function DashboardPage() {
         {/* Data Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Purchase Order Data</CardTitle>
-            <CardDescription>
-              Klik pada cell untuk mengedit data
-            </CardDescription>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Purchase Order Data</CardTitle>
+                <CardDescription>
+                  Klik pada cell untuk mengedit data
+                </CardDescription>
+              </div>
+              <Button onClick={() => handleAddPerson()}>
+                Tambah Person
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -641,6 +806,7 @@ export default function DashboardPage() {
                     <th className="border border-gray-300 px-2 py-1 text-right">Total Qty PO</th>
                     <th className="border border-gray-300 px-2 py-1 text-right">Total Value Sales</th>
                     <th className="border border-gray-300 px-2 py-1 text-center">Group</th>
+                    <th className="border border-gray-300 px-2 py-1 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -684,7 +850,23 @@ export default function DashboardPage() {
                           )}
                         </td>
                       ))}
-                      <td className="border border-gray-300 px-2 py-1 text-right">{row.totalQtyPO}</td>
+                      <td 
+                        className="border border-gray-300 px-2 py-1 text-right cursor-pointer hover:bg-blue-100"
+                        onClick={() => handleCellEdit(rowIndex, 'totalQtyPO', row.totalQtyPO)}
+                      >
+                        {editingCell?.row === rowIndex && editingCell?.col === 'totalQtyPO' ? (
+                          <Input
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={handleCellSave}
+                            onKeyDown={(e) => e.key === 'Enter' && handleCellSave()}
+                            className="w-20 h-6 text-xs"
+                            autoFocus
+                          />
+                        ) : (
+                          row.totalQtyPO.toLocaleString()
+                        )}
+                      </td>
                       <td className="border border-gray-300 px-2 py-1 text-right font-semibold">
                         {formatCurrency(row.totalValueSales)}
                       </td>
@@ -715,6 +897,15 @@ export default function DashboardPage() {
                             {row.group}
                           </span>
                         )}
+                      </td>
+                      <td className="border border-gray-300 px-2 py-1 text-center">
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleDeletePerson(rowIndex)}
+                        >
+                          Hapus
+                        </Button>
                       </td>
                     </tr>
                   ))}
