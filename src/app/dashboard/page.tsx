@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartConfig } from '@/components/ui/chart';
 
@@ -486,42 +486,164 @@ export default function DashboardPage() {
   const exportToPDF = () => {
     const doc = new jsPDF('landscape');
     
-    // Title
-    doc.setFontSize(16);
-    doc.text('Purchase Order by Order Control 2025 PT. Rame Rekaguna Prakarsa', 14, 15);
+    // Add header with company information
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(17, 24, 39); // Dark text similar to dashboard
+    doc.text('PT. Rame Rekaguna Prakarsa', 14, 15);
     
-    // Table data
-    const tableData = data.map(item => [
-      item.no,
-      item.name,
-      formatCurrency(item.januari),
-      formatCurrency(item.februari),
-      formatCurrency(item.maret),
-      formatCurrency(item.april),
-      formatCurrency(item.mei),
-      formatCurrency(item.juni),
-      formatCurrency(item.juli),
-      formatCurrency(item.agustus),
-      formatCurrency(item.september),
-      formatCurrency(item.oktober),
-      formatCurrency(item.november),
-      formatCurrency(item.desember),
-      item.totalQtyPO,
-      formatCurrency(item.totalValueSales),
-      item.group,
-      formatCurrency(item.targetGroup || 0),
-      item.targetGroup ? ((item.totalValueSales / item.targetGroup) * 100).toFixed(2) + '%' : '0%'
-    ]);
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "normal");
+    doc.text('Purchase Order by Order Control 2025', 14, 25);
     
-    doc.autoTable({
-      head: [['No', 'Name', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Total Qty PO', 'Total Value Sales', 'Group', 'Target Group', 'Achievement %']],
-      body: tableData,
-      startY: 25,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [66, 139, 202] }
+    // Add current date
+    const currentDate = new Date();
+    const formattedDate = currentDate.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
+    doc.setFontSize(10);
+    doc.setTextColor(107, 114, 128); // Gray text similar to dashboard
+    doc.text(`Exported on: ${formattedDate}`, 14, 35);
+    
+    // Add summary information like dashboard cards
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(17, 24, 39);
+    doc.text('Dashboard Summary:', 14, 45);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(107, 114, 128);
+    doc.text(`Total Sales: Rp ${formatCurrency(getTotalSales())}`, 14, 55);
+    doc.text(`Total Qty PO: ${getTotalQtyPO().toLocaleString()}`, 14, 65);
+    doc.text(`Total Target: Rp ${formatCurrency(getTotalTarget())}`, 14, 75);
+    doc.text(`Achievement: ${getTotalAchievement().toFixed(2)}%`, 14, 85);
+    
+    // Add group summaries similar to dashboard cards
+    let groupSummaryY = 95;
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(17, 24, 39);
+    doc.text('Group Performance:', 100, groupSummaryY);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(107, 114, 128);
+    availableGroups.forEach((group, index) => {
+      const groupTotal = getGroupTotals(group);
+      const groupTarget = groupTargets[group] || 0;
+      const achievement = groupTarget ? ((groupTotal / groupTarget) * 100).toFixed(2) : '0.00';
+      
+      // Different colors for different groups similar to dashboard
+      let groupColor = [107, 114, 128]; // Default gray
+      switch(group) {
+        case 'A':
+          groupColor = [59, 130, 246]; // Blue for group A
+          break;
+        case 'B':
+          groupColor = [16, 185, 129]; // Green for group B
+          break;
+        case 'C':
+          groupColor = [245, 158, 11]; // Yellow for group C
+          break;
+        case 'D':
+          groupColor = [139, 92, 246]; // Purple for group D
+          break;
+      }
+      
+      doc.setTextColor(groupColor[0], groupColor[1], groupColor[2]);
+      doc.text(`Group ${group}: Rp ${formatCurrency(groupTotal)} (Target: Rp ${formatCurrency(groupTarget)}, Achievement: ${achievement}%)`, 100, groupSummaryY + 10 + (index * 10));
     });
     
-    doc.save('Purchase_Order_2025.pdf');
+    // Reset text color for table
+    doc.setTextColor(17, 24, 39);
+    
+    // Table data - mirroring dashboard table structure
+    const tableData = data.map(item => {
+      // Group color coding similar to dashboard
+      let groupDisplay = item.group;
+      return [
+        item.no,
+        groupDisplay,
+        item.name,
+        formatCurrency(item.januari),
+        formatCurrency(item.februari),
+        formatCurrency(item.maret),
+        formatCurrency(item.april),
+        formatCurrency(item.mei),
+        formatCurrency(item.juni),
+        formatCurrency(item.juli),
+        formatCurrency(item.agustus),
+        formatCurrency(item.september),
+        formatCurrency(item.oktober),
+        formatCurrency(item.november),
+        formatCurrency(item.desember),
+        item.totalQtyPO.toLocaleString(),
+        formatCurrency(item.totalValueSales)
+      ];
+    });
+    
+    // Use autoTable function with styling similar to dashboard
+    autoTable(doc, {
+      head: [
+        ['No', 'Group', 'Name', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Total Qty PO', 'Total Value Sales']
+      ],
+      body: tableData,
+      startY: 100 + (availableGroups.length * 10),
+      styles: { 
+        fontSize: 8,
+        cellPadding: 2,
+        halign: 'center',
+        valign: 'middle'
+      },
+      headStyles: { 
+        fillColor: [59, 130, 246], // Blue-500 similar to dashboard
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle'
+      },
+      alternateRowStyles: {
+        fillColor: [249, 250, 251] // Light gray similar to dashboard hover
+      },
+      bodyStyles: {
+        textColor: [17, 24, 39], // Dark text similar to dashboard
+        lineColor: [209, 213, 219], // Border color similar to dashboard
+        lineWidth: 0.1
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 10 },   // No
+        1: { halign: 'center', cellWidth: 15 },   // Group
+        2: { halign: 'left', cellWidth: 30 },     // Name
+        3: { halign: 'right', cellWidth: 18 },    // Januari
+        4: { halign: 'right', cellWidth: 18 },    // Februari
+        5: { halign: 'right', cellWidth: 18 },    // Maret
+        6: { halign: 'right', cellWidth: 18 },    // April
+        7: { halign: 'right', cellWidth: 18 },    // Mei
+        8: { halign: 'right', cellWidth: 18 },    // Juni
+        9: { halign: 'right', cellWidth: 18 },    // Juli
+        10: { halign: 'right', cellWidth: 18 },   // Agustus
+        11: { halign: 'right', cellWidth: 18 },   // September
+        12: { halign: 'right', cellWidth: 18 },   // Oktober
+        13: { halign: 'right', cellWidth: 18 },   // November
+        14: { halign: 'right', cellWidth: 18 },   // Desember
+        15: { halign: 'right', cellWidth: 20 },   // Total Qty PO
+        16: { halign: 'right', cellWidth: 25 }    // Total Value Sales
+      },
+      pageBreak: 'auto',
+      margin: { top: 110, left: 10, right: 10, bottom: 20 },
+      didDrawPage: function(data) {
+        // Add page number
+        const pageCount = doc.getNumberOfPages();
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Page ${data.pageNumber} of ${pageCount}`, doc.internal.pageSize.width - 20, doc.internal.pageSize.height - 10);
+      }
+    });
+    
+    doc.save(`Purchase_Order_2025_${formattedDate.replace(/\s+/g, '_')}.pdf`);
   };
 
   const getGroupTotals = (group: string) => {
@@ -790,6 +912,7 @@ export default function DashboardPage() {
                 <thead>
                   <tr className="bg-gray-100 dark:bg-gray-800">
                     <th className="border border-gray-300 px-2 py-1 text-left">No</th>
+                    <th className="border border-gray-300 px-2 py-1 text-center">Group</th>
                     <th className="border border-gray-300 px-2 py-1 text-left">Name</th>
                     <th className="border border-gray-300 px-2 py-1 text-right">Januari</th>
                     <th className="border border-gray-300 px-2 py-1 text-right">Februari</th>
@@ -805,7 +928,6 @@ export default function DashboardPage() {
                     <th className="border border-gray-300 px-2 py-1 text-right">Desember</th>
                     <th className="border border-gray-300 px-2 py-1 text-right">Total Qty PO</th>
                     <th className="border border-gray-300 px-2 py-1 text-right">Total Value Sales</th>
-                    <th className="border border-gray-300 px-2 py-1 text-center">Group</th>
                     <th className="border border-gray-300 px-2 py-1 text-center">Aksi</th>
                   </tr>
                 </thead>
@@ -813,6 +935,34 @@ export default function DashboardPage() {
                   {data.map((row, rowIndex) => (
                     <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                       <td className="border border-gray-300 px-2 py-1 text-center">{row.no}</td>
+                      <td 
+                        className="border border-gray-300 px-2 py-1 text-center cursor-pointer hover:bg-blue-100"
+                        onClick={() => handleGroupEdit(rowIndex, row.group)}
+                      >
+                        {editingCell?.row === rowIndex && editingCell?.col === 'group' ? (
+                          <select
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={handleCellSave}
+                            className="w-full h-6 text-xs border rounded"
+                            autoFocus
+                          >
+                            {availableGroups.map(group => (
+                              <option key={group} value={group}>{group}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            row.group === 'A' ? 'bg-blue-100 text-blue-800' :
+                            row.group === 'B' ? 'bg-green-100 text-green-800' :
+                            row.group === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                            row.group === 'D' ? 'bg-purple-100 text-purple-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {row.group}
+                          </span>
+                        )}
+                      </td>
                       <td 
                         className="border border-gray-300 px-2 py-1 cursor-pointer hover:bg-blue-100"
                         onClick={() => handleNameEdit(rowIndex, row.name)}
@@ -869,34 +1019,6 @@ export default function DashboardPage() {
                       </td>
                       <td className="border border-gray-300 px-2 py-1 text-right font-semibold">
                         {formatCurrency(row.totalValueSales)}
-                      </td>
-                      <td 
-                        className="border border-gray-300 px-2 py-1 text-center cursor-pointer hover:bg-blue-100"
-                        onClick={() => handleGroupEdit(rowIndex, row.group)}
-                      >
-                        {editingCell?.row === rowIndex && editingCell?.col === 'group' ? (
-                          <select
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onBlur={handleCellSave}
-                            className="w-full h-6 text-xs border rounded"
-                            autoFocus
-                          >
-                            {availableGroups.map(group => (
-                              <option key={group} value={group}>{group}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            row.group === 'A' ? 'bg-blue-100 text-blue-800' :
-                            row.group === 'B' ? 'bg-green-100 text-green-800' :
-                            row.group === 'C' ? 'bg-yellow-100 text-yellow-800' :
-                            row.group === 'D' ? 'bg-purple-100 text-purple-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {row.group}
-                          </span>
-                        )}
                       </td>
                       <td className="border border-gray-300 px-2 py-1 text-center">
                         <Button 
