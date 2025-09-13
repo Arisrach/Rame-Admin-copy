@@ -483,168 +483,419 @@ export default function DashboardPage() {
     XLSX.writeFile(workbook, 'Purchase_Order_2025.xlsx');
   };
 
-  const exportToPDF = () => {
-    const doc = new jsPDF('landscape');
+  // Type definitions
+interface GroupColors {
+  A: [number, number, number];
+  B: [number, number, number];
+  C: [number, number, number];
+  D: [number, number, number];
+}
+
+interface Colors {
+  primary: [number, number, number];
+  dark: [number, number, number];
+  gray: [number, number, number];
+  light: [number, number, number];
+  border: [number, number, number];
+  white: [number, number, number];
+  groups: GroupColors;
+}
+
+interface SummaryCard {
+  title: string;
+  value: string;
+  color: [number, number, number];
+}
+
+const exportToPDF = (): void => {
+  const doc = new jsPDF('landscape', 'pt', 'a4');
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
+  // Color constants with proper TypeScript types
+  const colors: Colors = {
+    primary: [59, 130, 246],
+    dark: [17, 24, 39],
+    gray: [107, 114, 128],
+    light: [249, 250, 251],
+    border: [229, 231, 235],
+    white: [255, 255, 255],
+    groups: {
+      A: [59, 130, 246],
+      B: [16, 185, 129],
+      C: [245, 158, 11],
+      D: [139, 92, 246]
+    }
+  };
+
+  let currentY = 30;
+
+  // Helper function to add spacing
+  const addSpacing = (space: number = 10): number => {
+    currentY += space;
+    return currentY;
+  };
+
+  // Helper function to draw section separator
+  const drawSectionSeparator = (p0: number): void => {
+    doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+    doc.setLineWidth(1);
+    doc.line(30, currentY, pageWidth - 30, currentY);
+    addSpacing(15);
+  };
+
+  // Safe group color getter
+  const getGroupColor = (group: string): [number, number, number] => {
+    if (group in colors.groups) {
+      return colors.groups[group as keyof GroupColors];
+    }
+    return colors.gray;
+  };
+
+  // ==================== HEADER SECTION ====================
+  const drawHeader = (): void => {
+    // Company logo placeholder
+    doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+    doc.rect(30, currentY, 40, 40, 'F');
     
-    // Add header with company information
-    doc.setFontSize(18);
+    // Company name and title
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(17, 24, 39); // Dark text similar to dashboard
-    doc.text('PT. Rame Rekaguna Prakarsa', 14, 15);
+    doc.setFontSize(20);
+    doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
+    doc.text('PT. Rame Rekaguna Prakarsa', 80, currentY + 15);
     
     doc.setFontSize(14);
     doc.setFont("helvetica", "normal");
-    doc.text('Purchase Order by Order Control 2025', 14, 25);
+    doc.text('Purchase Order Report - Dashboard Summary 2025', 80, currentY + 35);
     
-    // Add current date
+    // Current date on the right
     const currentDate = new Date();
     const formattedDate = currentDate.toLocaleDateString('id-ID', {
       day: '2-digit',
       month: 'long',
-      year: 'numeric'
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
-    doc.setFontSize(10);
-    doc.setTextColor(107, 114, 128); // Gray text similar to dashboard
-    doc.text(`Exported on: ${formattedDate}`, 14, 35);
     
-    // Add summary information like dashboard cards
-    doc.setFontSize(12);
+    doc.setFontSize(10);
+    doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2]);
+    const dateText = `Generated: ${formattedDate}`;
+    const dateWidth = doc.getTextWidth(dateText);
+    doc.text(dateText, pageWidth - 30 - dateWidth, currentY + 25);
+    
+    addSpacing(60);
+    drawSectionSeparator(15);
+  };
+
+  // ==================== SUMMARY CARDS ====================
+  const drawSummaryCards = (): void => {
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(17, 24, 39);
-    doc.text('Dashboard Summary:', 14, 45);
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(107, 114, 128);
-    doc.text(`Total Sales: Rp ${formatCurrency(getTotalSales())}`, 14, 55);
-    doc.text(`Total Qty PO: ${getTotalQtyPO().toLocaleString()}`, 14, 65);
-    doc.text(`Total Target: Rp ${formatCurrency(getTotalTarget())}`, 14, 75);
-    doc.text(`Achievement: ${getTotalAchievement().toFixed(2)}%`, 14, 85);
-    
-    // Add group summaries similar to dashboard cards
-    let groupSummaryY = 95;
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(17, 24, 39);
-    doc.text('Group Performance:', 100, groupSummaryY);
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(107, 114, 128);
-    availableGroups.forEach((group, index) => {
-      const groupTotal = getGroupTotals(group);
-      const groupTarget = groupTargets[group] || 0;
-      const achievement = groupTarget ? ((groupTotal / groupTarget) * 100).toFixed(2) : '0.00';
-      
-      // Different colors for different groups similar to dashboard
-      let groupColor = [107, 114, 128]; // Default gray
-      switch(group) {
-        case 'A':
-          groupColor = [59, 130, 246]; // Blue for group A
-          break;
-        case 'B':
-          groupColor = [16, 185, 129]; // Green for group B
-          break;
-        case 'C':
-          groupColor = [245, 158, 11]; // Yellow for group C
-          break;
-        case 'D':
-          groupColor = [139, 92, 246]; // Purple for group D
-          break;
-      }
-      
-      doc.setTextColor(groupColor[0], groupColor[1], groupColor[2]);
-      doc.text(`Group ${group}: Rp ${formatCurrency(groupTotal)} (Target: Rp ${formatCurrency(groupTarget)}, Achievement: ${achievement}%)`, 100, groupSummaryY + 10 + (index * 10));
-    });
-    
-    // Reset text color for table
-    doc.setTextColor(17, 24, 39);
-    
-    // Table data - mirroring dashboard table structure
-    const tableData = data.map(item => {
-      // Group color coding similar to dashboard
-      let groupDisplay = item.group;
-      return [
-        item.no,
-        groupDisplay,
-        item.name,
-        formatCurrency(item.januari),
-        formatCurrency(item.februari),
-        formatCurrency(item.maret),
-        formatCurrency(item.april),
-        formatCurrency(item.mei),
-        formatCurrency(item.juni),
-        formatCurrency(item.juli),
-        formatCurrency(item.agustus),
-        formatCurrency(item.september),
-        formatCurrency(item.oktober),
-        formatCurrency(item.november),
-        formatCurrency(item.desember),
-        item.totalQtyPO.toLocaleString(),
-        formatCurrency(item.totalValueSales)
-      ];
-    });
-    
-    // Use autoTable function with styling similar to dashboard
-    autoTable(doc, {
-      head: [
-        ['No', 'Group', 'Name', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Total Qty PO', 'Total Value Sales']
-      ],
-      body: tableData,
-      startY: 100 + (availableGroups.length * 10),
-      styles: { 
-        fontSize: 8,
-        cellPadding: 2,
-        halign: 'center',
-        valign: 'middle'
+    doc.setFontSize(16);
+    doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
+    addSpacing(20); // Tambah jarak atas di sini
+    doc.text('Dashboard Overview', 30, currentY);
+    addSpacing(25);
+
+    const cardWidth = 180;
+    const cardHeight = 80;
+    const cardSpacing = 20;
+
+    const summaryData: SummaryCard[] = [
+      {
+        title: 'Total Sales',
+        value: `Rp ${formatCurrency(getTotalSales())}`,
+        color: colors.groups.A
       },
-      headStyles: { 
-        fillColor: [59, 130, 246], // Blue-500 similar to dashboard
-        textColor: [255, 255, 255],
+      {
+        title: 'Total Qty PO',
+        value: getTotalQtyPO().toLocaleString(),
+        color: colors.groups.B
+      },
+      {
+        title: 'Total Target',
+        value: `Rp ${formatCurrency(getTotalTarget())}`,
+        color: colors.groups.C
+      },
+      {
+        title: 'Achievement',
+        value: `${getTotalAchievement().toFixed(2)}%`,
+        color: colors.groups.D
+      }
+    ];
+
+    summaryData.forEach((card, index) => {
+      const x = 30 + (index * (cardWidth + cardSpacing));
+      const y = currentY;
+
+      // Card background
+      doc.setFillColor(colors.white[0], colors.white[1], colors.white[2]);
+      doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+      doc.setLineWidth(1);
+      doc.roundedRect(x, y, cardWidth, cardHeight, 5, 5, 'FD');
+
+      // Color accent line
+      doc.setFillColor(card.color[0], card.color[1], card.color[2]);
+      doc.rect(x, y, cardWidth, 4, 'F');
+
+      // Card title
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2]);
+      doc.text(card.title, x + 15, y + 25);
+
+      // Card value
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
+      doc.text(card.value, x + 15, y + 50);
+    });
+
+    addSpacing(100);
+    drawSectionSeparator(15);
+  };
+
+  // ==================== GROUP PERFORMANCE ====================
+const drawGroupPerformance = (): void => {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
+  addSpacing(20); // Tambah jarak atas di sini
+  doc.text('Group Performance Analysis', 30, currentY);
+  addSpacing(25);
+
+  let groupCardWidth = 160;
+  const groupCardHeight = 100;
+  const groupSpacingX = 25;
+  const groupSpacingY = 30;
+  const cardsPerRow = 2;
+  const pageWidth = 595; // Standard A4 width in points (72 dpi)
+  const margin = 30;
+
+  // Type assertion for availableGroups if needed
+  const groups = availableGroups as string[];
+  
+  groups.forEach((group: string, index: number) => {
+    const groupTotal = getGroupTotals(group);
+    const groupTarget = (groupTargets as Record<string, number>)[group] || 0;
+    const achievement = groupTarget ? ((groupTotal / groupTarget) * 100) : 0;
+    
+    // Calculate position based on row and column
+    // For first 2 cards: use normal layout
+    // For remaining 3 cards: spread across full width
+    let x, y;
+    
+    if (index < 2) {
+      // First row - 2 cards
+      x = margin + (index * (groupCardWidth + groupSpacingX));
+      y = currentY;
+    } else {
+      // Second row - 3 cards with equal spacing
+      const remainingCards = groups.length - 2;
+      const availableWidth = pageWidth - (2 * margin);
+      const cardWidth = (availableWidth - ((remainingCards - 1) * groupSpacingX)) / remainingCards;
+      
+      x = margin + ((index - 2) * (cardWidth + groupSpacingX));
+      y = currentY + groupCardHeight + groupSpacingY;
+      
+      // Adjust card width for the second row
+      groupCardWidth = cardWidth;
+    }
+
+    const groupColor = getGroupColor(group);
+
+    // Group card background
+    doc.setFillColor(colors.white[0], colors.white[1], colors.white[2]);
+    doc.setDrawColor(groupColor[0], groupColor[1], groupColor[2]);
+    doc.setLineWidth(2);
+    doc.roundedRect(x, y, groupCardWidth, groupCardHeight, 8, 8, 'FD');
+
+    // Group header
+    doc.setFillColor(groupColor[0], groupColor[1], groupColor[2]);
+    doc.roundedRect(x, y, groupCardWidth, 25, 8, 8, 'F');
+    doc.rect(x, y + 17, groupCardWidth, 8, 'F');
+
+    // Group label
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
+    doc.text(`GROUP ${group}`, x + 15, y + 17);
+
+    // Group statistics
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
+    
+    doc.text(`Total Sales:`, x + 15, y + 40);
+    doc.text(`Rp ${formatCurrency(groupTotal)}`, x + 15, y + 55);
+    
+    doc.text(`Target:`, x + 15, y + 70);
+    doc.text(`Rp ${formatCurrency(groupTarget)}`, x + 15, y + 85);
+
+    // Achievement badge
+    const achievementColor = achievement >= 100 ? colors.groups.B : 
+                            achievement >= 75 ? colors.groups.C : colors.gray;
+    doc.setFillColor(achievementColor[0], achievementColor[1], achievementColor[2]);
+    doc.roundedRect(x + groupCardWidth - 50, y + 35, 40, 20, 10, 10, 'F');
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
+    const achievementText = `${achievement.toFixed(0)}%`;
+    const achievementWidth = doc.getTextWidth(achievementText);
+    doc.text(achievementText, x + groupCardWidth - 30 - (achievementWidth/2), y + 48);
+  });
+
+  // Calculate total height needed (2 rows of cards + spacing)
+  const totalHeight = 2 * groupCardHeight + groupSpacingY + 30;
+  addSpacing(totalHeight);
+  drawSectionSeparator(35);
+};
+
+  // ==================== DATA TABLE ====================
+  const drawDataTable = (): void => {
+    doc.addPage();         // Pindah ke halaman baru
+    currentY = 30; 
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
+    addSpacing(20); // Tambah jarak atas di sini
+    doc.text('Detailed Purchase Order Data', 30, currentY);
+    addSpacing(25);
+
+    // Prepare table data with proper types
+    const tableData: string[][] = (data as any[]).map((item: any, index: number): string[] => [
+      (index + 1).toString(),
+      item.group,
+      item.name,
+      formatCurrency(item.januari),
+      formatCurrency(item.februari),
+      formatCurrency(item.maret),
+      formatCurrency(item.april),
+      formatCurrency(item.mei),
+      formatCurrency(item.juni),
+      formatCurrency(item.juli),
+      formatCurrency(item.agustus),
+      formatCurrency(item.september),
+      formatCurrency(item.oktober),
+      formatCurrency(item.november),
+      formatCurrency(item.desember),
+      item.totalQtyPO.toLocaleString(),
+      formatCurrency(item.totalValueSales)
+    ]);
+
+    // Enhanced autoTable configuration
+    (autoTable as any)(doc, {
+      head: [[
+        'No', 'Group', 'Name', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Total Qty', 'Total Sales'
+      ]],
+      body: tableData,
+      startY: currentY,
+      theme: 'striped',
+      styles: {
+        fontSize: 8,
+        cellPadding: 4,
+        lineColor: colors.border,
+        lineWidth: 0.5,
+        textColor: colors.dark,
+        font: 'helvetica'
+      },
+      headStyles: {
+        fillColor: colors.primary,
+        textColor: colors.white,
         fontStyle: 'bold',
         halign: 'center',
-        valign: 'middle'
-      },
-      alternateRowStyles: {
-        fillColor: [249, 250, 251] // Light gray similar to dashboard hover
-      },
-      bodyStyles: {
-        textColor: [17, 24, 39], // Dark text similar to dashboard
-        lineColor: [209, 213, 219], // Border color similar to dashboard
-        lineWidth: 0.1
+        valign: 'middle',
+        fontSize: 9
       },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 10 },   // No
-        1: { halign: 'center', cellWidth: 15 },   // Group
-        2: { halign: 'left', cellWidth: 30 },     // Name
-        3: { halign: 'right', cellWidth: 18 },    // Januari
-        4: { halign: 'right', cellWidth: 18 },    // Februari
-        5: { halign: 'right', cellWidth: 18 },    // Maret
-        6: { halign: 'right', cellWidth: 18 },    // April
-        7: { halign: 'right', cellWidth: 18 },    // Mei
-        8: { halign: 'right', cellWidth: 18 },    // Juni
-        9: { halign: 'right', cellWidth: 18 },    // Juli
-        10: { halign: 'right', cellWidth: 18 },   // Agustus
-        11: { halign: 'right', cellWidth: 18 },   // September
-        12: { halign: 'right', cellWidth: 18 },   // Oktober
-        13: { halign: 'right', cellWidth: 18 },   // November
-        14: { halign: 'right', cellWidth: 18 },   // Desember
-        15: { halign: 'right', cellWidth: 20 },   // Total Qty PO
-        16: { halign: 'right', cellWidth: 25 }    // Total Value Sales
+        0: { halign: 'center', cellWidth: 25 },
+        1: { halign: 'center', cellWidth: 35 },
+        2: { halign: 'left', cellWidth: 80 },
+        3: { halign: 'right', cellWidth: 45 },
+        4: { halign: 'right', cellWidth: 45 },
+        5: { halign: 'right', cellWidth: 45 },
+        6: { halign: 'right', cellWidth: 45 },
+        7: { halign: 'right', cellWidth: 45 },
+        8: { halign: 'right', cellWidth: 45 },
+        9: { halign: 'right', cellWidth: 45 },
+        10: { halign: 'right', cellWidth: 45 },
+        11: { halign: 'right', cellWidth: 45 },
+        12: { halign: 'right', cellWidth: 45 },
+        13: { halign: 'right', cellWidth: 45 },
+        14: { halign: 'right', cellWidth: 45 },
+        15: { halign: 'right', cellWidth: 50 },
+        16: { halign: 'right', cellWidth: 60 }
       },
+      alternateRowStyles: {
+        fillColor: colors.light
+      },
+      margin: { top: 30, left: 30, right: 30, bottom: 40 },
       pageBreak: 'auto',
-      margin: { top: 110, left: 10, right: 10, bottom: 20 },
-      didDrawPage: function(data) {
-        // Add page number
-        const pageCount = doc.getNumberOfPages();
+      showHead: 'everyPage',
+      didDrawCell: function(data: any) {
+        // Color-code group cells with type safety
+        if (data.column.index === 1 && data.section === 'body') {
+          const group = data.cell.text[0];
+          if (group in colors.groups) {
+            const groupColor = getGroupColor(group);
+            doc.setFillColor(groupColor[0], groupColor[1], groupColor[2]);
+            doc.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
+            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.text(group, data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 2, { align: 'center' });
+          }
+        }
+      },
+      didDrawPage: function(data: any) {
+        // Enhanced page footer
+        const pageNumber = data.pageNumber;
+        const totalPages = doc.getNumberOfPages();
+        
+        // Footer line
+        doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+        doc.setLineWidth(1);
+        doc.line(30, pageHeight - 30, pageWidth - 30, pageHeight - 30);
+        
+        // Company name in footer
         doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Page ${data.pageNumber} of ${pageCount}`, doc.internal.pageSize.width - 20, doc.internal.pageSize.height - 10);
+        doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2]);
+        doc.setFont('helvetica', 'normal');
+        doc.text('PT. Rame Rekaguna Prakarsa - Purchase Order Report', 30, pageHeight - 15);
+        
+        // Page number
+        const pageText = `Page ${pageNumber} of ${totalPages}`;
+        const pageTextWidth = doc.getTextWidth(pageText);
+        doc.text(pageText, pageWidth - 30 - pageTextWidth, pageHeight - 15);
       }
     });
-    
-    doc.save(`Purchase_Order_2025_${formattedDate.replace(/\s+/g, '_')}.pdf`);
   };
+
+  // ==================== MAIN EXECUTION ====================
+  try {
+    drawHeader();
+    drawSummaryCards();
+    drawGroupPerformance();
+    drawDataTable();
+
+    // Generate filename with timestamp
+    const currentDate = new Date();
+    const timestamp = currentDate.toISOString().slice(0, 19).replace(/[:-]/g, '').replace('T', '_');
+    const filename = `Purchase_Order_Report_${timestamp}.pdf`;
+    
+    // Save the PDF
+    doc.save(filename);
+    
+    // Optional: Show success message
+    console.log(`PDF exported successfully as: ${filename}`);
+    
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    alert('Error generating PDF. Please try again.');
+  }
+};
 
   const getGroupTotals = (group: string) => {
     const groupData = data.filter(item => item.group === group);
