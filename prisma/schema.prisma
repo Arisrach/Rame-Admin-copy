@@ -1,0 +1,51 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String   @default("admin")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admins")
+}
+
+model PurchaseOrder {
+  id              Int      @id @default(autoincrement())
+  name            String
+  group           String
+  januari         Float    @default(0)
+  februari        Float    @default(0)
+  maret           Float    @default(0)
+  april           Float    @default(0)
+  mei             Float    @default(0)
+  juni            Float    @default(0)
+  juli            Float    @default(0)
+  agustus         Float    @default(0)
+  september       Float    @default(0)
+  oktober         Float    @default(0)
+  november        Float    @default(0)
+  desember        Float    @default(0)
+  totalQtyPO      Int      @default(0)
+  totalValueSales Float    @default(0)
+  targetGroup     Float?
+  achieve         Float?
+  year            Int      @default(2025)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("purchase_orders")
+}
