@@ -615,9 +615,16 @@ const exportToPDF = (): void => {
 
   // ==================== HEADER SECTION ====================
   const drawHeader = (): void => {
-    // Company logo placeholder
-    doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+    
+    // For now, using a placeholder that indicates where the logo should be
+    doc.setFillColor(colors.groups.C[0], colors.groups.C[1], colors.groups.C[2]); // Orange background
     doc.rect(30, currentY, 40, 40, 'F');
+    
+    // Stylized placeholder for the Rame logo
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255); // White text
+    doc.text('R', 50, currentY + 25, { align: "center" });
     
     // Company name and title
     doc.setFont("helvetica", "bold");
