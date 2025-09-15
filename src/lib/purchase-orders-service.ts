@@ -1,5 +1,28 @@
-import { PurchaseOrder, PurchaseOrderUIData } from './types';
 import redis from '@/lib/redis';
+
+// Define the PurchaseOrder interface directly in this file
+export interface PurchaseOrder {
+  id?: number;
+  name: string;
+  group_name: string;
+  januari: number;
+  februari: number;
+  maret: number;
+  april: number;
+  mei: number;
+  juni: number;
+  juli: number;
+  agustus: number;
+  september: number;
+  oktober: number;
+  november: number;
+  desember: number;
+  totalQtyPO: number;
+  totalValueSales: number;
+  targetGroup?: number;
+  achieve?: number;
+  year?: number;
+}
 
 // UI representation that uses 'group' instead of 'group_name'
 export interface PurchaseOrderUIData extends Omit<PurchaseOrder, 'group_name'> {
