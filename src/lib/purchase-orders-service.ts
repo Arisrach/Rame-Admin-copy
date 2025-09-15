@@ -52,6 +52,9 @@ export class PurchaseOrdersService {
         year: order.year || new Date().getFullYear()
       };
       delete apiOrder.group;
+      delete apiOrder.id; // Don't try to update the ID field
+      delete apiOrder.originalName; // Remove originalName if present
+      delete apiOrder.originalGroup; // Remove originalGroup if present
 
       let updatedOrder;
 

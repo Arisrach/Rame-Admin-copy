@@ -26,7 +26,7 @@ model Admin {
 model PurchaseOrder {
   id              Int      @id @default(autoincrement())
   name            String
-  group           String
+  groupName       String   @map("group_name")
   januari         Float    @default(0)
   februari        Float    @default(0)
   maret           Float    @default(0)
@@ -48,4 +48,5 @@ model PurchaseOrder {
   updatedAt       DateTime @updatedAt
 
   @@map("purchase_orders")
+  @@unique([name, groupName])
 }

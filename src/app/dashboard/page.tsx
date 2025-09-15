@@ -233,10 +233,10 @@ export default function DashboardPage() {
       targetGroup: 0
     };
     
-    // Convert to database format (using groupName)
+    // Convert to database format (using group, not groupName)
     const dbOrder = {
       name: newPerson.name,
-      groupName: newPerson.group,
+      group: newPerson.group,  // Changed from groupName to group
       januari: newPerson.januari,
       februari: newPerson.februari,
       maret: newPerson.maret,
