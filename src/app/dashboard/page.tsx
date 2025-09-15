@@ -12,6 +12,17 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartConfig } from '@/components/ui/chart';
 import { PurchaseOrdersService, PurchaseOrder } from '@/lib/purchase-orders-service';
 
+// Loading spinner component
+const LoadingSpinner = () => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl flex flex-col items-center">
+      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+      <p className="text-gray-700 dark:text-gray-300 text-lg font-medium">Processing your request...</p>
+      <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">Please wait</p>
+    </div>
+  </div>
+);
+
 // Extend jsPDF type
 declare module 'jspdf' {
   interface jsPDF {
@@ -83,6 +94,7 @@ export default function DashboardPage() {
   const [editingTarget, setEditingTarget] = useState<string | null>(null);
   const [targetEditValue, setTargetEditValue] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [crudLoading, setCrudLoading] = useState(false); // New state for CRUD operations
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupTarget, setNewGroupTarget] = useState(0);
@@ -162,6 +174,7 @@ export default function DashboardPage() {
     
     // Delete from database first
     try {
+      setCrudLoading(true); // Start loading indicator
       await PurchaseOrdersService.delete(personToDelete.name, personToDelete.group);
       
       // Remove from UI only if database delete is successful
@@ -175,6 +188,8 @@ export default function DashboardPage() {
     } catch (error: any) {
       console.error('Error deleting person:', error);
       alert(`Terjadi kesalahan saat menghapus person: ${error.message || 'Silakan coba lagi.'}`);
+    } finally {
+      setCrudLoading(false); // Stop loading indicator
     }
   };
 
@@ -202,6 +217,7 @@ export default function DashboardPage() {
     
     // Save to database first
     try {
+      setCrudLoading(true); // Start loading indicator
       // Convert to database format (using group_name)
       const dbOrder = {
         name: newPerson.name,
@@ -231,6 +247,8 @@ export default function DashboardPage() {
     } catch (error: any) {
       console.error('Error saving person:', error);
       alert(`Terjadi kesalahan saat menambahkan person: ${error.message || 'Silakan coba lagi.'}`);
+    } finally {
+      setCrudLoading(false); // Stop loading indicator
     }
   };
 
@@ -290,6 +308,7 @@ export default function DashboardPage() {
       
       // Save to database
       try {
+        setCrudLoading(true); // Start loading indicator
         const rowData = newData[editingCell.row];
         // Convert to PurchaseOrderUIData format
         const purchaseOrder = {
@@ -328,6 +347,8 @@ export default function DashboardPage() {
         }
       } catch (error) {
         console.error('Error saving data:', error);
+      } finally {
+        setCrudLoading(false); // Stop loading indicator
       }
     }
     setEditingCell(null);
@@ -347,6 +368,7 @@ export default function DashboardPage() {
     
     // Save to database
     try {
+      setCrudLoading(true); // Start loading indicator
       const rowData = newData[rowIndex];
       console.log('Row data to save:', rowData);
       
@@ -396,6 +418,8 @@ export default function DashboardPage() {
       // If there's an error, refresh the data to ensure UI consistency
       console.log('Error occurred, refreshing data to get correct state');
       await fetchPurchaseOrders();
+    } finally {
+      setCrudLoading(false); // Stop loading indicator
     }
     
     // Exit edit mode
@@ -455,6 +479,7 @@ export default function DashboardPage() {
       
       // Save to database - update all members of the group
       try {
+        setCrudLoading(true); // Start loading indicator
         const groupMembers = newData.filter(item => item.group === editingTarget);
         for (const member of groupMembers) {
           // Convert to PurchaseOrderUIData format
@@ -483,6 +508,8 @@ export default function DashboardPage() {
         }
       } catch (error) {
         console.error('Error saving target:', error);
+      } finally {
+        setCrudLoading(false); // Stop loading indicator
       }
     }
     setEditingTarget(null);
@@ -997,17 +1024,32 @@ const drawGroupPerformance = (): void => {
               </p>
             </div>
             <div className="flex space-x-4">
-              <Button onClick={() => setShowAddGroupModal(true)} variant="outline">
-                Tambah Group
+              <Button 
+                onClick={() => setShowAddGroupModal(true)} 
+                variant="outline"
+                disabled={crudLoading}
+              >
+                {crudLoading ? 'Processing...' : 'Tambah Group'}
               </Button>
-              <Button onClick={exportToExcel} variant="outline">
-                Export Excel
+              <Button 
+                onClick={exportToExcel} 
+                variant="outline"
+                disabled={crudLoading}
+              >
+                {crudLoading ? 'Processing...' : 'Export Excel'}
               </Button>
-              <Button onClick={exportToPDF} variant="outline">
-                Export PDF
+              <Button 
+                onClick={exportToPDF} 
+                variant="outline"
+                disabled={crudLoading}
+              >
+                {crudLoading ? 'Processing...' : 'Export PDF'}
               </Button>
-              <Button onClick={() => window.location.href = '/'}>
-                Logout
+              <Button 
+                onClick={() => window.location.href = '/'}
+                disabled={crudLoading}
+              >
+                {crudLoading ? 'Processing...' : 'Logout'}
               </Button>
             </div>
           </div>
@@ -1181,8 +1223,8 @@ const drawGroupPerformance = (): void => {
                   Klik pada cell untuk mengedit data
                 </CardDescription>
               </div>
-              <Button onClick={() => handleAddPerson()}>
-                Tambah Person
+              <Button onClick={() => handleAddPerson()} disabled={crudLoading}>
+                {crudLoading ? 'Processing...' : 'Tambah Person'}
               </Button>
             </div>
           </CardHeader>
@@ -1192,7 +1234,15 @@ const drawGroupPerformance = (): void => {
                 <div className="text-lg">Loading data...</div>
               </div>
             ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto relative">
+              {crudLoading && (
+                <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-10">
+                  <div className="flex flex-col items-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+                    <span className="text-gray-600 text-sm">Updating...</span>
+                  </div>
+                </div>
+              )}
               <table className="w-full border-collapse border border-gray-300">
                 <thead>
                   <tr className="bg-gray-100 dark:bg-gray-800">
@@ -1309,8 +1359,9 @@ const drawGroupPerformance = (): void => {
                           variant="destructive" 
                           size="sm"
                           onClick={() => handleDeletePerson(rowIndex)}
+                          disabled={crudLoading}
                         >
-                          Hapus
+                          {crudLoading ? '...' : 'Hapus'}
                         </Button>
                       </td>
                     </tr>
@@ -1369,6 +1420,7 @@ const drawGroupPerformance = (): void => {
           </div>
         </div>
       )}
+      {crudLoading && <LoadingSpinner />}
     </div>
   );
 }
