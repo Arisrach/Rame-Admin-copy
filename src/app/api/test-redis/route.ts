@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import redis from '@/lib/redis';
+import { authenticateUser } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -13,10 +14,14 @@ export async function GET() {
     // Clean up
     await redis.del(testKey);
     
+    // Test user authentication
+    const authResult = await authenticateUser('admin@rame.com', 'admin123');
+    
     return NextResponse.json({
       success: true,
-      message: 'Redis connection successful',
-      result
+      message: 'Redis connection and authentication test successful',
+      redisTest: result,
+      authTest: authResult ? 'User authenticated' : 'User not found or invalid credentials'
     });
   } catch (error: any) {
     console.error('Redis connection failed:', error);

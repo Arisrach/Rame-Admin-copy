@@ -1,3 +1,4 @@
+import { createAdminUser } from '../src/lib/auth';
 import redis from '../src/lib/redis';
 
 // Sample purchase order data
@@ -42,17 +43,9 @@ async function setupRedis() {
     await redis.set('purchase_orders', JSON.stringify(sampleData));
     console.log('Sample purchase orders stored in Redis');
     
-    // Create a sample admin user
-    const adminUser = {
-      email: 'admin@example.com',
-      password: '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PZvO.S', // password: admin123
-      name: 'Admin User',
-      isActive: true,
-      id: 1
-    };
-    
-    await redis.set('user:admin@example.com', JSON.stringify(adminUser));
-    console.log('Sample admin user created');
+    // Create the specified admin user
+    await createAdminUser('admin@rame.com', 'admin123', 'Admin User');
+    console.log('Admin user created with email: admin@rame.com and password: admin123');
     
     console.log('Redis setup completed successfully!');
   } catch (error) {
