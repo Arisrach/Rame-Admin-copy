@@ -10,6 +10,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartConfig } from '@/components/ui/chart';
+import { PurchaseOrdersService, PurchaseOrder } from '@/lib/purchase-orders-service';
 
 // Extend jsPDF type
 declare module 'jspdf' {
@@ -38,6 +39,7 @@ interface PurchaseOrderData {
   group: string;
   targetGroup?: number;
   achieve?: number;
+  id?: number;
 }
 
 const sampleData: PurchaseOrderData[] = [
@@ -108,40 +110,13 @@ export default function DashboardPage() {
 
   const fetchPurchaseOrders = async () => {
     try {
-      const response = await fetch('/api/purchase-orders');
-      
-      // Check if response is ok
-      if (!response.ok) {
-        console.error(`HTTP error! status: ${response.status}`);
-        // Fallback to sample data if API fails
-        setData(sampleData);
-        setLoading(false);
-        return;
-      }
-      
-      // Check if response has content
-      const text = await response.text();
-      if (!text) {
-        console.error('Empty response from API');
-        setData(sampleData);
-        setLoading(false);
-        return;
-      }
-      
-      // Try to parse JSON
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch (parseError) {
-        console.error('Failed to parse JSON:', parseError);
-        console.error('Response text:', text);
-        setData(sampleData);
-        setLoading(false);
-        return;
-      }
+      const result = await PurchaseOrdersService.getAll();
+      console.log('=== FETCH PURCHASE ORDERS ===');
+      console.log('Raw API response:', result);
       
       // Transform database data to match our interface
       const transformedData = result.map((item: any, index: number) => ({
+        id: item.id,
         no: index + 1,
         name: item.name,
         januari: item.januari || 0,
@@ -162,6 +137,7 @@ export default function DashboardPage() {
         targetGroup: item.targetGroup || 0,
         achieve: item.achieve || 0
       }));
+      console.log('Transformed data:', transformedData);
       setData(transformedData);
     } catch (error) {
       console.error('Error fetching purchase orders:', error);
@@ -186,31 +162,16 @@ export default function DashboardPage() {
     
     // Delete from database first
     try {
-      const response = await fetch('/api/purchase-orders', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: personToDelete.name,
-          group_name: personToDelete.group
-        }),
-      });
+      await PurchaseOrdersService.delete(personToDelete.name, personToDelete.group);
       
-      if (response.ok) {
-        // Remove from UI only if database delete is successful
-        const newData = data.filter((_, index) => index !== rowIndex);
-        // Update row numbers
-        const updatedData = newData.map((item, index) => ({
-          ...item,
-          no: index + 1
-        }));
-        setData(updatedData);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to delete person from database:', errorData);
-        alert(`Gagal menghapus person: ${errorData.error || 'Silakan coba lagi.'}`);
-      }
+      // Remove from UI only if database delete is successful
+      const newData = data.filter((_, index) => index !== rowIndex);
+      // Update row numbers
+      const updatedData = newData.map((item, index) => ({
+        ...item,
+        no: index + 1
+      }));
+      setData(updatedData);
     } catch (error: any) {
       console.error('Error deleting person:', error);
       alert(`Terjadi kesalahan saat menghapus person: ${error.message || 'Silakan coba lagi.'}`);
@@ -241,41 +202,32 @@ export default function DashboardPage() {
     
     // Save to database first
     try {
-      const response = await fetch('/api/purchase-orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newPerson.name,
-          group_name: newPerson.group,
-          januari: newPerson.januari,
-          februari: newPerson.februari,
-          maret: newPerson.maret,
-          april: newPerson.april,
-          mei: newPerson.mei,
-          juni: newPerson.juni,
-          juli: newPerson.juli,
-          agustus: newPerson.agustus,
-          september: newPerson.september,
-          oktober: newPerson.oktober,
-          november: newPerson.november,
-          desember: newPerson.desember,
-          totalQtyPO: newPerson.totalQtyPO,
-          totalValueSales: newPerson.totalValueSales,
-          targetGroup: newPerson.targetGroup
-        }),
-      });
+      // Convert to database format (using group_name)
+      const dbOrder = {
+        name: newPerson.name,
+        group_name: newPerson.group,
+        januari: newPerson.januari,
+        februari: newPerson.februari,
+        maret: newPerson.maret,
+        april: newPerson.april,
+        mei: newPerson.mei,
+        juni: newPerson.juni,
+        juli: newPerson.juli,
+        agustus: newPerson.agustus,
+        september: newPerson.september,
+        oktober: newPerson.oktober,
+        november: newPerson.november,
+        desember: newPerson.desember,
+        totalQtyPO: newPerson.totalQtyPO,
+        totalValueSales: newPerson.totalValueSales,
+        targetGroup: newPerson.targetGroup
+      };
       
-      if (response.ok) {
-        // Add to UI only if database save is successful
-        const newData = [...data, newPerson];
-        setData(newData);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to save person to database:', errorData);
-        alert(`Gagal menambahkan person: ${errorData.error || 'Silakan coba lagi.'}`);
-      }
+      await PurchaseOrdersService.create(dbOrder);
+      
+      // Add to UI only if database save is successful
+      const newData = [...data, newPerson];
+      setData(newData);
     } catch (error: any) {
       console.error('Error saving person:', error);
       alert(`Terjadi kesalahan saat menambahkan person: ${error.message || 'Silakan coba lagi.'}`);
@@ -288,21 +240,27 @@ export default function DashboardPage() {
   };
 
   const handleCellSave = async () => {
+    console.log('handleCellSave called with editingCell:', editingCell);
+    console.log('editValue:', editValue);
     if (editingCell) {
       const newData = [...data];
       
       if (editingCell.col === 'name') {
         // Handle name editing
         newData[editingCell.row].name = editValue;
+        console.log('Updated name to:', editValue);
       } else if (editingCell.col === 'group') {
         // Handle group changing
         newData[editingCell.row].group = editValue;
         // Update target group based on new group
         newData[editingCell.row].targetGroup = groupTargets[editValue] || 0;
+        console.log('Updated group to:', editValue);
+        console.log('Updated targetGroup to:', groupTargets[editValue] || 0);
       } else {
         // Handle numeric value editing
         const numericValue = parseFloat(editValue) || 0;
         (newData[editingCell.row] as any)[editingCell.col] = numericValue;
+        console.log('Updated', editingCell.col, 'to:', numericValue);
         
         // Recalculate totals if editing monthly values
         if (editingCell.col !== 'totalQtyPO') {
@@ -320,21 +278,24 @@ export default function DashboardPage() {
                                 newData[editingCell.row].desember;
           
           newData[editingCell.row].totalValueSales = totalValueSales;
+          console.log('Recalculated totalValueSales to:', totalValueSales);
           
-          // Recalculate totalQtyPO as sum of all monthly values
-          const totalQtyPO = totalValueSales; // For now, using the same value
-          newData[editingCell.row].totalQtyPO = totalQtyPO;
+          // totalQtyPO is independent and should not be recalculated
+          // It can be edited separately by the user
         }
       }
       
       setData(newData);
+      console.log('Updated data state:', newData);
       
       // Save to database
       try {
         const rowData = newData[editingCell.row];
-        const requestBody: any = {
+        // Convert to PurchaseOrderUIData format
+        const purchaseOrder = {
+          id: rowData.id,
           name: rowData.name,
-          group_name: rowData.group,
+          group: rowData.group,
           januari: rowData.januari,
           februari: rowData.februari,
           maret: rowData.maret,
@@ -349,26 +310,95 @@ export default function DashboardPage() {
           desember: rowData.desember,
           totalQtyPO: rowData.totalQtyPO,
           totalValueSales: rowData.totalValueSales,
-          targetGroup: rowData.targetGroup
+          targetGroup: rowData.targetGroup,
+          achieve: rowData.achieve
         };
 
+        console.log('Sending request to API:', purchaseOrder);
+        
         // Add original values if this is a name or group change
         if (originalValues && (editingCell.col === 'name' || editingCell.col === 'group')) {
-          requestBody.originalName = originalValues.name;
-          requestBody.originalGroup = originalValues.group;
+          console.log('Adding original values to request:', {
+            originalName: originalValues.name,
+            originalGroup: originalValues.group
+          });
+          await PurchaseOrdersService.update(purchaseOrder, originalValues.name, originalValues.group);
+        } else {
+          await PurchaseOrdersService.update(purchaseOrder);
         }
-
-        await fetch('/api/purchase-orders', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-        });
       } catch (error) {
         console.error('Error saving data:', error);
       }
     }
+    setEditingCell(null);
+    setEditValue("");
+    setOriginalValues(null);
+  };
+
+  const handleGroupChange = async (rowIndex: number, newGroup: string) => {
+    console.log('=== HANDLE GROUP CHANGE ===');
+    console.log('Called with:', { rowIndex, newGroup });
+    console.log('Current data at row:', data[rowIndex]);
+    
+    const newData = [...data];
+    newData[rowIndex].group = newGroup;
+    newData[rowIndex].targetGroup = groupTargets[newGroup] || 0;
+    setData(newData);
+    
+    // Save to database
+    try {
+      const rowData = newData[rowIndex];
+      console.log('Row data to save:', rowData);
+      
+      // Convert to PurchaseOrderUIData format
+      const purchaseOrder = {
+        id: rowData.id,
+        name: rowData.name,
+        group: rowData.group,
+        januari: rowData.januari,
+        februari: rowData.februari,
+        maret: rowData.maret,
+        april: rowData.april,
+        mei: rowData.mei,
+        juni: rowData.juni,
+        juli: rowData.juli,
+        agustus: rowData.agustus,
+        september: rowData.september,
+        oktober: rowData.oktober,
+        november: rowData.november,
+        desember: rowData.desember,
+        totalQtyPO: rowData.totalQtyPO,
+        totalValueSales: rowData.totalValueSales,
+        targetGroup: rowData.targetGroup,
+        achieve: rowData.achieve
+      };
+      
+      console.log('=== PREPARING TO SEND GROUP CHANGE REQUEST ===');
+      console.log('Purchase Order Data:', purchaseOrder);
+      console.log('Original Values:', {
+        originalName: data[rowIndex].name,
+        originalGroup: data[rowIndex].group
+      });
+      
+      const response = await PurchaseOrdersService.update(purchaseOrder, data[rowIndex].name, data[rowIndex].group);
+      console.log('API Response:', response);
+      
+      // Only refresh data if there was an error - otherwise trust our UI update
+      // This prevents the UI from reverting to old values if there's a delay or issue with the API
+      if (response && (response as any).error) {
+        console.log('Error in API response, refreshing data to get correct state');
+        await fetchPurchaseOrders();
+      } else {
+        console.log('Group change successful, keeping UI state');
+      }
+    } catch (error) {
+      console.error('Error saving group change:', error);
+      // If there's an error, refresh the data to ensure UI consistency
+      console.log('Error occurred, refreshing data to get correct state');
+      await fetchPurchaseOrders();
+    }
+    
+    // Exit edit mode
     setEditingCell(null);
     setEditValue("");
     setOriginalValues(null);
@@ -381,9 +411,15 @@ export default function DashboardPage() {
   };
 
   const handleGroupEdit = (rowIndex: number, currentGroup: string) => {
+    console.log('=== HANDLE GROUP EDIT ===');
+    console.log('Called with:', { rowIndex, currentGroup });
+    console.log('Current data at row:', data[rowIndex]);
+    
     setEditingCell({ row: rowIndex, col: 'group' });
     setEditValue(currentGroup);
     setOriginalValues({ name: data[rowIndex].name, group: currentGroup });
+    
+    console.log('Set original values to:', { name: data[rowIndex].name, group: currentGroup });
   };
 
   const handleAddGroup = () => {
@@ -421,31 +457,29 @@ export default function DashboardPage() {
       try {
         const groupMembers = newData.filter(item => item.group === editingTarget);
         for (const member of groupMembers) {
-          await fetch('/api/purchase-orders', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              name: member.name,
-              group_name: member.group,
-              januari: member.januari,
-              februari: member.februari,
-              maret: member.maret,
-              april: member.april,
-              mei: member.mei,
-              juni: member.juni,
-              juli: member.juli,
-              agustus: member.agustus,
-              september: member.september,
-              oktober: member.oktober,
-              november: member.november,
-              desember: member.desember,
-              totalQtyPO: member.totalQtyPO,
-              totalValueSales: member.totalValueSales,
-              targetGroup: newTarget
-            }),
-          });
+          // Convert to PurchaseOrderUIData format
+          const purchaseOrder = {
+            id: member.id,
+            name: member.name,
+            group: member.group,
+            januari: member.januari,
+            februari: member.februari,
+            maret: member.maret,
+            april: member.april,
+            mei: member.mei,
+            juni: member.juni,
+            juli: member.juli,
+            agustus: member.agustus,
+            september: member.september,
+            oktober: member.oktober,
+            november: member.november,
+            desember: member.desember,
+            totalQtyPO: member.totalQtyPO,
+            totalValueSales: member.totalValueSales,
+            targetGroup: newTarget
+          };
+          
+          await PurchaseOrdersService.update(purchaseOrder);
         }
       } catch (error) {
         console.error('Error saving target:', error);
@@ -1193,8 +1227,7 @@ const drawGroupPerformance = (): void => {
                         {editingCell?.row === rowIndex && editingCell?.col === 'group' ? (
                           <select
                             value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onBlur={handleCellSave}
+                            onChange={(e) => handleGroupChange(rowIndex, e.target.value)}
                             className="w-full h-6 text-xs border rounded"
                             autoFocus
                           >
