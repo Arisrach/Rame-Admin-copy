@@ -101,4 +101,32 @@ export class PurchaseOrdersService {
       throw error;
     }
   }
+
+  static async deleteGroup(groupName: string): Promise<void> {
+    try {
+      await prisma.purchaseOrder.deleteMany({
+        where: {
+          groupName: groupName
+        }
+      });
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      throw error;
+    }
+  }
+
+  static async getAllGroupNames(): Promise<string[]> {
+    try {
+      const groups = await prisma.purchaseOrder.groupBy({
+        by: ['groupName'],
+        orderBy: {
+          groupName: 'asc'
+        }
+      });
+      return groups.map(group => group.groupName);
+    } catch (error) {
+      console.error('Error fetching group names:', error);
+      throw error;
+    }
+  }
 }

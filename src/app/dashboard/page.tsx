@@ -600,6 +600,55 @@ export default function DashboardPage() {
     setTargetEditValue("");
   };
 
+  const handleRemoveGroup = async (groupName: string) => {
+    // Confirmation
+    if (!confirm(`Apakah Anda yakin ingin menghapus group ${groupName}? Ini akan menghapus semua person dalam group ini.`)) {
+      return;
+    }
+    
+    try {
+      setCrudLoading(true); // Start loading indicator
+      
+      // Delete all purchase orders in the group
+      const response = await fetch('/api/groups', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ group: groupName }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete group');
+      }
+      
+      // Remove the group from available groups
+      const newAvailableGroups = availableGroups.filter(group => group !== groupName);
+      setAvailableGroups(newAvailableGroups);
+      
+      // Remove the group target
+      const newGroupTargets = { ...groupTargets };
+      delete newGroupTargets[groupName];
+      setGroupTargets(newGroupTargets);
+      
+      // Remove all persons in this group from the data
+      const newData = data.filter(item => item.group !== groupName);
+      // Update row numbers
+      const updatedData = newData.map((item, index) => ({
+        ...item,
+        no: index + 1
+      }));
+      setData(updatedData);
+      
+    } catch (error: any) {
+      console.error('Error deleting group:', error);
+      alert(`Terjadi kesalahan saat menghapus group: ${error.message || 'Silakan coba lagi.'}`);
+    } finally {
+      setCrudLoading(false); // Stop loading indicator
+    }
+  };
+
   const exportToExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(data.map(item => ({
       'No': item.no,
@@ -1202,6 +1251,16 @@ const drawGroupPerformance = (): void => {
               <Card key={group}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Group {group}</CardTitle>
+                  {group !== 'A' && group !== 'B' && group !== 'C' && group !== 'D' && group !== 'Other' && (
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={() => handleRemoveGroup(group)}
+                      disabled={crudLoading}
+                    >
+                      Hapus
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">Rp {formatCurrency(getGroupTotals(group))}</div>
