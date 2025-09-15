@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import redis from './redis';
+import { prisma } from './db';
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
@@ -11,16 +11,11 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 
 export async function authenticateUser(email: string, password: string) {
   try {
-    // Fetch user from Redis
-    const userData = await redis.get(`user:${email}`);
-    
-    if (!userData) {
-      return null;
-    }
-    
-    const user = JSON.parse(userData as string);
-    
-    if (!user.isActive) {
+    const user = await prisma.admin.findUnique({
+      where: { email },
+    });
+
+    if (!user || !user.isActive) {
       return null;
     }
 
@@ -43,16 +38,13 @@ export async function createAdminUser(email: string, password: string, name?: st
   try {
     const hashedPassword = await hashPassword(password);
     
-    const user = {
-      email,
-      password: hashedPassword,
-      name,
-      isActive: true,
-      id: Date.now(), // Simple ID generation
-    };
-    
-    // Store user in Redis
-    await redis.set(`user:${email}`, JSON.stringify(user));
+    const user = await prisma.admin.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+      },
+    });
 
     // Return user without password
     const { password: _, ...userWithoutPassword } = user;

@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import redis from '@/lib/redis';
+import { PurchaseOrdersService } from '@/lib/purchase-orders-service';
 
 export async function GET() {
   try {
-    // Fetch all purchase orders from Redis
-    const purchaseOrders = await redis.get('purchase_orders');
-    
-    if (!purchaseOrders) {
-      // Return empty array if no data exists
-      return NextResponse.json([]);
-    }
-    
-    return NextResponse.json(purchaseOrders);
+    const orders = await PurchaseOrdersService.getAll();
+    return NextResponse.json(orders);
   } catch (error: any) {
-    console.error('Error fetching purchase orders from Redis:', error);
+    console.error('Error fetching purchase orders:', error);
     return NextResponse.json(
       { error: 'Failed to fetch purchase orders' },
       { status: 500 }
@@ -24,15 +17,12 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    
-    // Store purchase orders in Redis
-    await redis.set('purchase_orders', JSON.stringify(data));
-    
-    return NextResponse.json({ success: true, message: 'Purchase orders saved successfully' });
+    const order = await PurchaseOrdersService.create(data);
+    return NextResponse.json(order);
   } catch (error: any) {
-    console.error('Error saving purchase orders to Redis:', error);
+    console.error('Error creating purchase order:', error);
     return NextResponse.json(
-      { error: 'Failed to save purchase orders' },
+      { error: 'Failed to create purchase order' },
       { status: 500 }
     );
   }
@@ -41,15 +31,12 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const data = await request.json();
-    
-    // Update purchase orders in Redis
-    await redis.set('purchase_orders', JSON.stringify(data));
-    
-    return NextResponse.json({ success: true, message: 'Purchase orders updated successfully' });
+    const order = await PurchaseOrdersService.update(data);
+    return NextResponse.json(order);
   } catch (error: any) {
-    console.error('Error updating purchase orders in Redis:', error);
+    console.error('Error updating purchase order:', error);
     return NextResponse.json(
-      { error: 'Failed to update purchase orders' },
+      { error: 'Failed to update purchase order' },
       { status: 500 }
     );
   }
@@ -58,21 +45,10 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { name, group } = await request.json();
-    
-    // Fetch current data
-    const purchaseOrders = await redis.get('purchase_orders') as any[] || [];
-    
-    // Filter out the item to delete
-    const updatedOrders = purchaseOrders.filter(
-      (order: any) => !(order.name === name && order.group === group)
-    );
-    
-    // Save updated data
-    await redis.set('purchase_orders', JSON.stringify(updatedOrders));
-    
-    return NextResponse.json({ success: true, message: 'Purchase order deleted successfully' });
+    await PurchaseOrdersService.delete(name, group);
+    return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Error deleting purchase order from Redis:', error);
+    console.error('Error deleting purchase order:', error);
     return NextResponse.json(
       { error: 'Failed to delete purchase order' },
       { status: 500 }

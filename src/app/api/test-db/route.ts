@@ -1,32 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import redis from '@/lib/redis';
+import { prisma } from '@/lib/db';
 
 export async function GET() {
-  console.log('Testing Redis connection...');
-
   try {
-    // Test Redis connection by setting and getting a value
-    const testKey = 'test_connection';
-    const testValue = 'success';
-    
-    await redis.set(testKey, testValue);
-    const result = await redis.get(testKey);
-    
-    // Clean up
-    await redis.del(testKey);
-    
-    console.log('Redis connection test successful');
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
     
     return NextResponse.json({
       success: true,
-      message: 'Redis connection successful',
-      result
+      message: 'Database connection successful'
     });
   } catch (error: any) {
-    console.error('Redis connection failed:', error);
+    console.error('Database connection failed:', error);
     return NextResponse.json({
       success: false,
-      message: 'Redis connection failed',
+      message: 'Database connection failed',
       error: error.message
     }, { status: 500 });
   }
