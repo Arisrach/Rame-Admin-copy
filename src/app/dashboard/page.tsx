@@ -10,7 +10,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartConfig } from '@/components/ui/chart';
-import { PurchaseOrdersService, PurchaseOrder } from '@/lib/purchase-orders-service';
+import { PurchaseOrdersService } from '@/lib/purchase-orders-service';
+import { PurchaseOrder } from '@/lib/types';
 
 // Loading spinner component
 const LoadingSpinner = () => (
