@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import redis from '@/lib/redis';
 
 export async function GET() {
-  console.log('Testing Redis connection...');
-
   try {
     // Test Redis connection by setting and getting a value
     const testKey = 'test_connection';
@@ -14,8 +12,6 @@ export async function GET() {
     
     // Clean up
     await redis.del(testKey);
-    
-    console.log('Redis connection test successful');
     
     return NextResponse.json({
       success: true,
