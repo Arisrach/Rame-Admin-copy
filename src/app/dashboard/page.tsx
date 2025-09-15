@@ -218,28 +218,7 @@ export default function DashboardPage() {
     // Save to database first
     try {
       setCrudLoading(true); // Start loading indicator
-      // Convert to database format (using group_name)
-      const dbOrder = {
-        name: newPerson.name,
-        group_name: newPerson.group,
-        januari: newPerson.januari,
-        februari: newPerson.februari,
-        maret: newPerson.maret,
-        april: newPerson.april,
-        mei: newPerson.mei,
-        juni: newPerson.juni,
-        juli: newPerson.juli,
-        agustus: newPerson.agustus,
-        september: newPerson.september,
-        oktober: newPerson.oktober,
-        november: newPerson.november,
-        desember: newPerson.desember,
-        totalQtyPO: newPerson.totalQtyPO,
-        totalValueSales: newPerson.totalValueSales,
-        targetGroup: newPerson.targetGroup
-      };
-      
-      await PurchaseOrdersService.create(dbOrder);
+      await PurchaseOrdersService.create(newPerson);
       
       // Add to UI only if database save is successful
       const newData = [...data, newPerson];
