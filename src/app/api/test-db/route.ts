@@ -9,15 +9,25 @@ export async function GET() {
     database: process.env.DB_NAME || 'rame_admin'
   };
 
+  console.log('Testing database connection with config:', {
+    host: connectionConfig.host,
+    user: connectionConfig.user,
+    database: connectionConfig.database
+    // Don't log password for security
+  });
+
   let connection;
   try {
-    console.log('Testing database connection...');
+    console.log('Attempting to connect to database...');
     connection = await mysql.createConnection(connectionConfig);
     
     // Test a simple query
+    console.log('Executing test query...');
     const [rows] = await connection.execute('SELECT 1 as test');
     
     await connection.end();
+    
+    console.log('Database connection test successful');
     
     return NextResponse.json({
       success: true,
