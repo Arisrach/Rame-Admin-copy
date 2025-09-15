@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import mysql from 'mysql2/promise';
 
 const connectionConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'rame_admin'
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'rame_admin'
 };
 
 export async function GET() {
