@@ -702,7 +702,7 @@ interface SummaryCard {
 }
 
 const exportToPDF = (): void => {
-  const doc = new jsPDF('landscape', 'pt', 'a4');
+  const doc = new jsPDF('landscape', 'pt', 'a3');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   
@@ -791,288 +791,296 @@ const exportToPDF = (): void => {
 
   // ==================== SUMMARY CARDS ====================
   const drawSummaryCards = (): void => {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
-    addSpacing(20); // Tambah jarak atas di sini
-    doc.text('Dashboard Overview', 30, currentY);
-    addSpacing(25);
-
-    const cardWidth = 180;
-    const cardHeight = 80;
-    const cardSpacing = 20;
-
-    const summaryData: SummaryCard[] = [
-      {
-        title: 'Total Sales',
-        value: `Rp ${formatCurrency(getTotalSales())}`,
-        color: colors.groups.A
-      },
-      {
-        title: 'Total Qty PO',
-        value: getTotalQtyPO().toLocaleString(),
-        color: colors.groups.B
-      },
-      {
-        title: 'Total Target',
-        value: `Rp ${formatCurrency(getTotalTarget())}`,
-        color: colors.groups.C
-      },
-      {
-        title: 'Achievement',
-        value: `${getTotalAchievement().toFixed(2)}%`,
-        color: colors.groups.D
-      }
-    ];
-
-    summaryData.forEach((card, index) => {
-      const x = 30 + (index * (cardWidth + cardSpacing));
-      const y = currentY;
-
-      // Card background
-      doc.setFillColor(colors.white[0], colors.white[1], colors.white[2]);
-      doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
-      doc.setLineWidth(1);
-      doc.roundedRect(x, y, cardWidth, cardHeight, 5, 5, 'FD');
-
-      // Color accent line
-      doc.setFillColor(card.color[0], card.color[1], card.color[2]);
-      doc.rect(x, y, cardWidth, 4, 'F');
-
-      // Card title
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2]);
-      doc.text(card.title, x + 15, y + 25);
-
-      // Card value
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
-      doc.text(card.value, x + 15, y + 50);
-    });
-
-    addSpacing(100);
-    drawSectionSeparator(15);
-  };
-
-  // ==================== GROUP PERFORMANCE ====================
-const drawGroupPerformance = (): void => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
-  addSpacing(20); // Tambah jarak atas di sini
+  addSpacing(20);
+  doc.text('Dashboard Overview', 30, currentY);
+  addSpacing(25);
+
+  // ✅ Ambil ukuran halaman
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 30;
+  const cardHeight = 80;
+  const cardSpacing = 20;
+
+  // Data summary
+  const summaryData: SummaryCard[] = [
+    { title: 'Total Sales', value: `Rp ${formatCurrency(getTotalSales())}`, color: colors.groups.A },
+    { title: 'Total Qty PO', value: getTotalQtyPO().toLocaleString(), color: colors.groups.B },
+    { title: 'Total Target', value: `Rp ${formatCurrency(getTotalTarget())}`, color: colors.groups.C },
+    { title: 'Achievement', value: `${getTotalAchievement().toFixed(2)}%`, color: colors.groups.D }
+  ];
+
+  // ✅ Hitung ulang cardWidth biar pas 4 kolom
+  const availableWidth = pageWidth - (2 * margin) - ((summaryData.length - 1) * cardSpacing);
+  const cardWidth = availableWidth / summaryData.length;
+
+  summaryData.forEach((card, index) => {
+    const x = margin + (index * (cardWidth + cardSpacing));
+    const y = currentY;
+
+    // Card background
+    doc.setFillColor(colors.white[0], colors.white[1], colors.white[2]);
+    doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+    doc.setLineWidth(1);
+    doc.roundedRect(x, y, cardWidth, cardHeight, 5, 5, 'FD');
+
+    // Color accent line
+    doc.setFillColor(card.color[0], card.color[1], card.color[2]);
+    doc.rect(x, y, cardWidth, 4, 'F');
+
+    // Card title
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2]);
+    doc.text(card.title, x + 15, y + 25);
+
+    // Card value
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
+    doc.text(card.value, x + 15, y + 50);
+  });
+
+  addSpacing(cardHeight + 40);
+  drawSectionSeparator(15);
+};
+
+
+  // ==================== GROUP PERFORMANCE ====================
+const drawGroupPerformance = (): void => {
+  // Section Title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
+  addSpacing(20);
   doc.text('Group Performance Analysis', 30, currentY);
   addSpacing(25);
 
-  let groupCardWidth = 160;
   const groupCardHeight = 100;
   const groupSpacingX = 25;
   const groupSpacingY = 30;
-  const cardsPerRow = 2;
-  const pageWidth = 595; // Standard A4 width in points (72 dpi)
+
+  const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 30;
 
-  // Type assertion for availableGroups if needed
   const groups = availableGroups as string[];
-  
+
+  // ✅ helper function untuk label + value
+  const drawLabelValue = (label: string, value: string, x: number, y: number): number => {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
+    doc.text(label, x, y);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
+    doc.text(value, x, y + 12);
+
+    return y + 28; // balikin Y berikutnya untuk entry lain
+  };
+
   groups.forEach((group: string, index: number) => {
     const groupTotal = getGroupTotals(group);
     const groupTarget = (groupTargets as Record<string, number>)[group] || 0;
     const achievement = groupTarget ? ((groupTotal / groupTarget) * 100) : 0;
-    
-    // Calculate position based on row and column
-    // For first 2 cards: use normal layout
-    // For remaining 3 cards: spread across full width
-    let x, y;
-    
+
+    let x, y, cardWidth;
+
     if (index < 2) {
-      // First row - 2 cards
-      x = margin + (index * (groupCardWidth + groupSpacingX));
+      // 🔹 Baris pertama: 2 kartu
+      const availableWidth = pageWidth - (2 * margin);
+      cardWidth = (availableWidth - groupSpacingX) / 2;
+
+      x = margin + (index * (cardWidth + groupSpacingX));
       y = currentY;
     } else {
-      // Second row - 3 cards with equal spacing
+      // 🔹 Baris kedua: sisanya bagi rata
       const remainingCards = groups.length - 2;
       const availableWidth = pageWidth - (2 * margin);
-      const cardWidth = (availableWidth - ((remainingCards - 1) * groupSpacingX)) / remainingCards;
-      
+      cardWidth = (availableWidth - ((remainingCards - 1) * groupSpacingX)) / remainingCards;
+
       x = margin + ((index - 2) * (cardWidth + groupSpacingX));
       y = currentY + groupCardHeight + groupSpacingY;
-      
-      // Adjust card width for the second row
-      groupCardWidth = cardWidth;
     }
 
     const groupColor = getGroupColor(group);
 
-    // Group card background
+    // Card background
     doc.setFillColor(colors.white[0], colors.white[1], colors.white[2]);
     doc.setDrawColor(groupColor[0], groupColor[1], groupColor[2]);
     doc.setLineWidth(2);
-    doc.roundedRect(x, y, groupCardWidth, groupCardHeight, 8, 8, 'FD');
+    doc.roundedRect(x, y, cardWidth, groupCardHeight, 8, 8, 'FD');
 
-    // Group header
+    // Header strip
     doc.setFillColor(groupColor[0], groupColor[1], groupColor[2]);
-    doc.roundedRect(x, y, groupCardWidth, 25, 8, 8, 'F');
-    doc.rect(x, y + 17, groupCardWidth, 8, 'F');
+    doc.roundedRect(x, y, cardWidth, 25, 8, 8, 'F');
+    doc.rect(x, y + 17, cardWidth, 8, 'F');
 
-    // Group label
+    // Label group
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
     doc.text(`GROUP ${group}`, x + 15, y + 17);
 
-    // Group statistics
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
-    
-    doc.text(`Total Sales:`, x + 15, y + 40);
-    doc.text(`Rp ${formatCurrency(groupTotal)}`, x + 15, y + 55);
-    
-    doc.text(`Target:`, x + 15, y + 70);
-    doc.text(`Rp ${formatCurrency(groupTarget)}`, x + 15, y + 85);
+    // Stats
+    let statsY = y + 40;
+    statsY = drawLabelValue("Total Sales", `Rp ${formatCurrency(groupTotal)}`, x + 15, statsY);
+    statsY = drawLabelValue("Target", `Rp ${formatCurrency(groupTarget)}`, x + 15, statsY);
 
     // Achievement badge
-    const achievementColor = achievement >= 100 ? colors.groups.B : 
-                            achievement >= 75 ? colors.groups.C : colors.gray;
+    const achievementColor = achievement >= 100 ? colors.groups.B :
+                             achievement >= 75 ? colors.groups.C : colors.gray;
+
     doc.setFillColor(achievementColor[0], achievementColor[1], achievementColor[2]);
-    doc.roundedRect(x + groupCardWidth - 50, y + 35, 40, 20, 10, 10, 'F');
-    
+    doc.roundedRect(x + cardWidth - 50, y + 35, 40, 20, 10, 10, 'F');
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
     const achievementText = `${achievement.toFixed(0)}%`;
-    const achievementWidth = doc.getTextWidth(achievementText);
-    doc.text(achievementText, x + groupCardWidth - 30 - (achievementWidth/2), y + 48);
+    const textWidth = doc.getTextWidth(achievementText);
+    doc.text(achievementText, x + cardWidth - 30 - (textWidth/2), y + 48);
   });
 
-  // Calculate total height needed (2 rows of cards + spacing)
-  const totalHeight = 2 * groupCardHeight + groupSpacingY + 30;
+  // ✅ Tambah spacing setelah semua cards
+  const totalHeight = groupCardHeight * 2 + groupSpacingY + 30;
   addSpacing(totalHeight);
   drawSectionSeparator(35);
 };
 
-  // ==================== DATA TABLE ====================
-  const drawDataTable = (): void => {
-    doc.addPage();         // Pindah ke halaman baru
-    currentY = 30; 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
-    addSpacing(20); // Tambah jarak atas di sini
-    doc.text('Detailed Purchase Order Data', 30, currentY);
-    addSpacing(25);
 
-    // Prepare table data with proper types
-    const tableData: string[][] = (data as any[]).map((item: any, index: number): string[] => [
-      (index + 1).toString(),
-      item.group,
-      item.name,
-      formatCurrency(item.januari),
-      formatCurrency(item.februari),
-      formatCurrency(item.maret),
-      formatCurrency(item.april),
-      formatCurrency(item.mei),
-      formatCurrency(item.juni),
-      formatCurrency(item.juli),
-      formatCurrency(item.agustus),
-      formatCurrency(item.september),
-      formatCurrency(item.oktober),
-      formatCurrency(item.november),
-      formatCurrency(item.desember),
-      item.totalQtyPO.toLocaleString(),
-      formatCurrency(item.totalValueSales)
-    ]);
 
-    // Enhanced autoTable configuration
-    (autoTable as any)(doc, {
-      head: [[
-        'No', 'Group', 'Name', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Total Qty', 'Total Sales'
-      ]],
-      body: tableData,
-      startY: currentY,
-      theme: 'striped',
-      styles: {
-        fontSize: 8,
-        cellPadding: 4,
-        lineColor: colors.border,
-        lineWidth: 0.5,
-        textColor: colors.dark,
-        font: 'helvetica'
-      },
-      headStyles: {
-        fillColor: colors.primary,
-        textColor: colors.white,
-        fontStyle: 'bold',
-        halign: 'center',
-        valign: 'middle',
-        fontSize: 9
-      },
-      columnStyles: {
-        0: { halign: 'center', cellWidth: 25 },
-        1: { halign: 'center', cellWidth: 35 },
-        2: { halign: 'left', cellWidth: 80 },
-        3: { halign: 'right', cellWidth: 45 },
-        4: { halign: 'right', cellWidth: 45 },
-        5: { halign: 'right', cellWidth: 45 },
-        6: { halign: 'right', cellWidth: 45 },
-        7: { halign: 'right', cellWidth: 45 },
-        8: { halign: 'right', cellWidth: 45 },
-        9: { halign: 'right', cellWidth: 45 },
-        10: { halign: 'right', cellWidth: 45 },
-        11: { halign: 'right', cellWidth: 45 },
-        12: { halign: 'right', cellWidth: 45 },
-        13: { halign: 'right', cellWidth: 45 },
-        14: { halign: 'right', cellWidth: 45 },
-        15: { halign: 'right', cellWidth: 50 },
-        16: { halign: 'right', cellWidth: 60 }
-      },
-      alternateRowStyles: {
-        fillColor: colors.light
-      },
-      margin: { top: 30, left: 30, right: 30, bottom: 40 },
-      pageBreak: 'auto',
-      showHead: 'everyPage',
-      didDrawCell: function(data: any) {
-        // Color-code group cells with type safety
-        if (data.column.index === 1 && data.section === 'body') {
-          const group = data.cell.text[0];
-          if (group in colors.groups) {
-            const groupColor = getGroupColor(group);
-            doc.setFillColor(groupColor[0], groupColor[1], groupColor[2]);
-            doc.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
-            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
-            doc.text(group, data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 2, { align: 'center' });
-          }
-        }
-      },
-      didDrawPage: function(data: any) {
-        // Enhanced page footer
-        const pageNumber = data.pageNumber;
-        const totalPages = doc.getNumberOfPages();
-        
-        // Footer line
-        doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
-        doc.setLineWidth(1);
-        doc.line(30, pageHeight - 30, pageWidth - 30, pageHeight - 30);
-        
-        // Company name in footer
-        doc.setFontSize(8);
-        doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2]);
-        doc.setFont('helvetica', 'normal');
-        doc.text('PT. Rame Rekaguna Prakarsa - Purchase Order Report', 30, pageHeight - 15);
-        
-        // Page number
-        const pageText = `Page ${pageNumber} of ${totalPages}`;
-        const pageTextWidth = doc.getTextWidth(pageText);
-        doc.text(pageText, pageWidth - 30 - pageTextWidth, pageHeight - 15);
-      }
-    });
+// ==================== DATA TABLE ====================
+const drawDataTable = (): void => {
+  doc.addPage();         
+  currentY = 30; 
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 30;
+  const availableWidth = pageWidth - margin * 2;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
+  addSpacing(20);
+  doc.text('Detailed Purchase Order Data', margin, currentY);
+  addSpacing(25);
+
+  // Prepare table data
+  const tableData: string[][] = (data as any[]).map((item: any, index: number): string[] => [
+    (index + 1).toString(),
+    item.group,
+    item.name,
+    formatCurrency(item.januari),
+    formatCurrency(item.februari),
+    formatCurrency(item.maret),
+    formatCurrency(item.april),
+    formatCurrency(item.mei),
+    formatCurrency(item.juni),
+    formatCurrency(item.juli),
+    formatCurrency(item.agustus),
+    formatCurrency(item.september),
+    formatCurrency(item.oktober),
+    formatCurrency(item.november),
+    formatCurrency(item.desember),
+    item.totalQtyPO.toLocaleString(),
+    formatCurrency(item.totalValueSales)
+  ]);
+
+  // === Dynamic Column Width ===
+  const fixedColumns: Record<number, number> = {
+    0: 25, // No
+    1: 35, // Group
+    2: 80  // Name
   };
+
+  const fixedTotal = fixedColumns[0] + fixedColumns[1] + fixedColumns[2];
+  const flexibleCols = 17 - 3; // 14 kolom
+  const remainingWidth = availableWidth - fixedTotal;
+  const flexibleWidth = remainingWidth / flexibleCols;
+
+  const columnStyles: Record<number, any> = {
+    0: { halign: 'center', cellWidth: fixedColumns[0] },
+    1: { halign: 'center', cellWidth: fixedColumns[1] },
+    2: { halign: 'left',   cellWidth: fixedColumns[2] }
+  };
+
+  for (let i = 3; i <= 16; i++) {
+    columnStyles[i] = { halign: 'right', cellWidth: flexibleWidth };
+  }
+
+  // === AutoTable ===
+  (autoTable as any)(doc, {
+    head: [[
+      'No', 'Group', 'Name', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Total Qty', 'Total Sales'
+    ]],
+    body: tableData,
+    startY: currentY,
+    theme: 'striped',
+    styles: {
+      fontSize: availableWidth < 800 ? 7 : 8, // shrink font kalau sempit
+      cellPadding: 3,
+      lineColor: colors.border,
+      lineWidth: 0.5,
+      textColor: colors.dark,
+      font: 'helvetica'
+    },
+    headStyles: {
+      fillColor: colors.primary,
+      textColor: colors.white,
+      fontStyle: 'bold',
+      halign: 'center',
+      valign: 'middle',
+      fontSize: availableWidth < 800 ? 8 : 9
+    },
+    columnStyles: columnStyles,
+    alternateRowStyles: {
+      fillColor: colors.light
+    },
+    margin: { top: 30, left: margin, right: margin, bottom: 40 },
+    pageBreak: 'auto',
+    showHead: 'everyPage',
+    didDrawCell: function(data: any) {
+      if (data.column.index === 1 && data.section === 'body') {
+        const group = data.cell.text[0];
+        if (group in colors.groups) {
+          const groupColor = getGroupColor(group);
+          doc.setFillColor(groupColor[0], groupColor[1], groupColor[2]);
+          doc.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
+          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'bold');
+          doc.text(group, data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 2, { align: 'center' });
+        }
+      }
+    },
+    didDrawPage: function(data: any) {
+      const pageNumber = data.pageNumber;
+      const totalPages = doc.getNumberOfPages();
+
+      // Footer line
+      doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+      doc.setLineWidth(1);
+      doc.line(margin, pageHeight - 30, pageWidth - margin, pageHeight - 30);
+
+      // Company name
+      doc.setFontSize(8);
+      doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2]);
+      doc.setFont('helvetica', 'normal');
+      doc.text('PT. Rame Rekaguna Prakarsa - Purchase Order Report', margin, pageHeight - 15);
+
+      // Page number
+      const pageText = `Page ${pageNumber} of ${totalPages}`;
+      const pageTextWidth = doc.getTextWidth(pageText);
+      doc.text(pageText, pageWidth - margin - pageTextWidth, pageHeight - 15);
+    }
+  });
+};
 
   // ==================== MAIN EXECUTION ====================
   try {
