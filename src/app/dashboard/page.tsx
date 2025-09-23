@@ -798,7 +798,7 @@ const exportToPDF = (): void => {
   doc.text('Dashboard Overview', 30, currentY);
   addSpacing(25);
 
-  // ✅ Ambil ukuran halaman
+  // âœ… Ambil ukuran halaman
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 30;
   const cardHeight = 80;
@@ -812,7 +812,7 @@ const exportToPDF = (): void => {
     { title: 'Achievement', value: `${getTotalAchievement().toFixed(2)}%`, color: colors.groups.D }
   ];
 
-  // ✅ Hitung ulang cardWidth biar pas 4 kolom
+  // âœ… Hitung ulang cardWidth biar pas 4 kolom
   const availableWidth = pageWidth - (2 * margin) - ((summaryData.length - 1) * cardSpacing);
   const cardWidth = availableWidth / summaryData.length;
 
@@ -867,7 +867,7 @@ const drawGroupPerformance = (): void => {
 
   const groups = availableGroups as string[];
 
-  // ✅ helper function untuk label + value
+  // âœ… helper function untuk label + value
   const drawLabelValue = (label: string, value: string, x: number, y: number): number => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -890,14 +890,14 @@ const drawGroupPerformance = (): void => {
     let x, y, cardWidth;
 
     if (index < 2) {
-      // 🔹 Baris pertama: 2 kartu
+      // ðŸ”¹ Baris pertama: 2 kartu
       const availableWidth = pageWidth - (2 * margin);
       cardWidth = (availableWidth - groupSpacingX) / 2;
 
       x = margin + (index * (cardWidth + groupSpacingX));
       y = currentY;
     } else {
-      // 🔹 Baris kedua: sisanya bagi rata
+      // ðŸ”¹ Baris kedua: sisanya bagi rata
       const remainingCards = groups.length - 2;
       const availableWidth = pageWidth - (2 * margin);
       cardWidth = (availableWidth - ((remainingCards - 1) * groupSpacingX)) / remainingCards;
@@ -945,13 +945,659 @@ const drawGroupPerformance = (): void => {
     doc.text(achievementText, x + cardWidth - 30 - (textWidth/2), y + 48);
   });
 
-  // ✅ Tambah spacing setelah semua cards
+  // âœ… Tambah spacing setelah semua cards
   const totalHeight = groupCardHeight * 2 + groupSpacingY + 30;
   addSpacing(totalHeight);
   drawSectionSeparator(35);
 };
 
+/**
+ * Draws a professional horizontal group performance chart on PDF
+ * Shows performance comparison between different groups/categories
+ */
+const drawGroupPerformanceChart = (): void => {
+  // Initialize new page
+  doc.addPage();
+  currentY = PAGE_MARGIN;
 
+  const groupPageConfig = {
+    width: doc.internal.pageSize.getWidth(),
+    height: doc.internal.pageSize.getHeight(),
+    margin: PAGE_MARGIN
+  };
+
+  const chartConfig = {
+    width: groupPageConfig.width - 2 * groupPageConfig.margin - 80,
+    height: 320,
+    x: groupPageConfig.margin + 40,
+    y: 0, // Will be set after drawing header
+    barHeight: 35, // Height of each horizontal bar
+    barSpacing: 15, // Space between bars
+    topPadding: 40,
+    bottomPadding: 30,
+    leftPadding: 100, // Space for group labels on the left
+    rightPadding: 60  // Space for value labels on the right
+  };
+
+  // Draw chart header
+  drawGroupChartHeader();
+  
+  // Set chart Y position after header
+  chartConfig.y = currentY;
+  
+  // Get and validate data
+  const groupData = getGroupPerformanceData();
+  if (!groupData || groupData.length === 0) {
+    drawNoGroupDataMessage();
+    return;
+  }
+
+  // Calculate chart dimensions
+  const chartMetrics = calculateHorizontalChartMetrics(groupData, chartConfig);
+  
+  // Draw chart components
+  drawHorizontalChartAxes(chartConfig, groupData.length);
+  drawHorizontalBarsWithLabels(groupData, chartConfig, chartMetrics);
+  drawHorizontalGroupLabels(groupData, chartConfig);
+  
+  // Update position for next section
+  currentY += chartConfig.height + 50;
+  drawSectionSeparator(15);
+};
+
+/**
+ * Draws the group chart header with title and description
+ */
+const drawGroupChartHeader = (): void => {
+  // Main title
+  currentY += 25; 
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(groupChartColors.primaryDark[0], groupChartColors.primaryDark[1], groupChartColors.primaryDark[2]);
+  doc.text('Group Performance Analysis', PAGE_MARGIN, currentY);
+  currentY += 20;
+  
+  // Subtitle/description
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(groupChartColors.textSecondary[0], groupChartColors.textSecondary[1], groupChartColors.textSecondary[2]);
+  doc.text('Comparison of sales performance between groups', PAGE_MARGIN, currentY);
+  currentY += 10;
+};
+
+/**
+ * Gets group performance data from actual sales data
+ */
+const getGroupPerformanceData = (): GroupData[] => {
+  // Calculate totals for each group based on actual data from the state
+  const groupTotals: Record<string, number> = {};
+  
+  // Initialize all available groups with 0
+  availableGroups.forEach(group => {
+    groupTotals[group] = 0;
+  });
+  
+  // Aggregate data by group
+  data.forEach(item => {
+    const group = item.group;
+    if (groupTotals.hasOwnProperty(group)) {
+      groupTotals[group] += item.totalValueSales;
+    }
+  });
+  
+  const totalSales = Object.values(groupTotals).reduce((sum, val) => sum + val, 0);
+  
+  // Convert to GroupData array
+  return availableGroups.map((groupName, index) => {
+    const total = groupTotals[groupName] || 0;
+    
+    // Assign colors cyclically
+    const colors = [
+      groupChartColors.groupA,
+      groupChartColors.groupB,
+      groupChartColors.groupC,
+      groupChartColors.groupD,
+      groupChartColors.groupE
+    ];
+    
+    return {
+      group: groupName === 'Other' ? 'Other' : `Group ${groupName}`,
+      total: total,
+      percentage: totalSales > 0 ? (total / totalSales * 100) : 0,
+      color: colors[index % colors.length]
+    };
+  });
+};
+
+/**
+ * Calculates horizontal chart metrics based on data and configuration
+ */
+const calculateHorizontalChartMetrics = (data: GroupData[], config: any) => {
+  const maxValue = Math.max(...data.map(item => item.total));
+  const barCount = data.length;
+  
+  // Calculate available width for bars
+  const availableWidth = config.width - config.leftPadding - config.rightPadding;
+  
+  return {
+    maxValue,
+    barCount,
+    availableWidth,
+    paddedMaxValue: maxValue * 1.1, // 10% padding
+    totalHeight: barCount * (config.barHeight + config.barSpacing) - config.barSpacing
+  };
+};
+
+/**
+ * Draws horizontal chart axes
+ */
+const drawHorizontalChartAxes = (config: any, barCount: number): void => {
+  doc.setDrawColor(groupChartColors.borderPrimary[0], groupChartColors.borderPrimary[1], groupChartColors.borderPrimary[2]);
+  doc.setLineWidth(0.5);
+  
+  const chartStartY = config.y + config.topPadding;
+  const chartStartX = config.x + config.leftPadding;
+  const chartEndX = config.x + config.width - config.rightPadding;
+  const totalHeight = barCount * (config.barHeight + config.barSpacing);
+  
+  // Horizontal lines for each bar
+  for (let i = 0; i <= barCount; i++) {
+    const yPos = chartStartY + (i * (config.barHeight + config.barSpacing));
+    doc.setDrawColor(groupChartColors.gridLight[0], groupChartColors.gridLight[1], groupChartColors.gridLight[2]);
+    doc.setLineWidth(0.3);
+    doc.line(chartStartX, yPos, chartEndX, yPos);
+  }
+  
+  // Vertical line (Y-axis)
+  doc.setDrawColor(groupChartColors.borderPrimary[0], groupChartColors.borderPrimary[1], groupChartColors.borderPrimary[2]);
+  doc.setLineWidth(1);
+  doc.line(chartStartX, chartStartY, chartStartX, chartStartY + totalHeight);
+};
+
+/**
+ * Draws horizontal bars with values and different colors
+ */
+const drawHorizontalBarsWithLabels = (
+  data: GroupData[], 
+  config: any, 
+  metrics: any
+): void => {
+  const chartStartY = config.y + config.topPadding;
+  const chartStartX = config.x + config.leftPadding;
+  
+  data.forEach((item, index) => {
+    const barWidth = (item.total / metrics.paddedMaxValue) * metrics.availableWidth;
+    const barY = chartStartY + (index * (config.barHeight + config.barSpacing)) + 2;
+    const barX = chartStartX + 1;
+    
+    // Draw horizontal bar
+    drawHorizontalStyledBar(barX, barY, barWidth, config.barHeight - 4, item.color);
+    
+    // Draw value label at the end of bar
+    drawHorizontalBarValueLabel(item.total, item.percentage, barX + barWidth, barY, config.barHeight - 4);
+  });
+};
+
+/**
+ * Draws a styled horizontal bar with group-specific color
+ */
+const drawHorizontalStyledBar = (x: number, y: number, width: number, height: number, color: [number, number, number]): void => {
+  // Draw bar even if width is 0 to maintain visual consistency
+  // For zero values, we draw a minimal bar of 1px width
+  const actualWidth = width < 1 ? 1 : width;
+  
+  // Main bar
+  doc.setFillColor(color[0], color[1], color[2]);
+  doc.rect(x, y, actualWidth, height, 'F');
+  
+  // Add subtle border
+  doc.setDrawColor(Math.max(0, color[0] - 30), Math.max(0, color[1] - 30), Math.max(0, color[2] - 30));
+  doc.setLineWidth(0.5);
+  doc.rect(x, y, actualWidth, height, 'S');
+  
+  // Add gradient effect (lighter top portion)
+  if (height > 10) {
+    doc.setFillColor(Math.min(255, color[0] + 40), Math.min(255, color[1] + 40), Math.min(255, color[2] + 40));
+    doc.rect(x, y, actualWidth, height * 0.4, 'F');
+  }
+};
+
+/**
+ * Draws value and percentage label at the end of each horizontal bar
+ */
+const drawHorizontalBarValueLabel = (value: number, percentage: number, x: number, y: number, height: number): void => {
+  const labelX = x + 8; // Small offset from bar end
+  const centerY = y + height / 2;
+  
+  // Value label
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(groupChartColors.textPrimary[0], groupChartColors.textPrimary[1], groupChartColors.textPrimary[2]);
+  
+  const formattedValue = formatCurrencyCompact(value);
+  doc.text(formattedValue, labelX, centerY - 2);
+  
+  // Percentage label
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(groupChartColors.textSecondary[0], groupChartColors.textSecondary[1], groupChartColors.textSecondary[2]);
+  
+  const percentageText = `(${percentage.toFixed(1)}%)`;
+  doc.text(percentageText, labelX, centerY + 6);
+};
+
+/**
+ * Draws group labels on the left side
+ */
+const drawHorizontalGroupLabels = (data: GroupData[], config: any): void => {
+  const chartStartY = config.y + config.topPadding;
+  const labelX = config.x + config.leftPadding - 10;
+  
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(groupChartColors.textSecondary[0], groupChartColors.textSecondary[1], groupChartColors.textSecondary[2]);
+  
+  data.forEach((item, index) => {
+    const barY = chartStartY + (index * (config.barHeight + config.barSpacing));
+    const centerY = barY + config.barHeight / 2 + 2;
+    
+    const textWidth = doc.getTextWidth(item.group);
+    doc.text(item.group, labelX - textWidth, centerY);
+  });
+};
+
+/**
+ * Draws message when no group data is available
+ */
+const drawNoGroupDataMessage = (): void => {
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(12);
+  doc.setTextColor(groupChartColors.textMuted[0], groupChartColors.textMuted[1], groupChartColors.textMuted[2]);
+  doc.text('Tidak ada data performance grup untuk ditampilkan', PAGE_MARGIN, currentY);
+  currentY += 30;
+};
+
+// Type definitions for group chart
+interface GroupData {
+  group: string;
+  total: number;
+  percentage: number;
+  color: [number, number, number];
+}
+
+// Color scheme for group chart
+const groupChartColors = {
+  primaryDark: [33, 37, 41] as [number, number, number],
+  textPrimary: [33, 37, 41] as [number, number, number],
+  textSecondary: [108, 117, 125] as [number, number, number],
+  textMuted: [134, 142, 150] as [number, number, number],
+  borderPrimary: [206, 212, 218] as [number, number, number],
+  gridLight: [233, 236, 239] as [number, number, number],
+  // Group-specific colors
+  groupA: [59, 130, 246] as [number, number, number],    
+  groupB: [16, 185, 129] as [number, number, number],      
+  groupC: [245, 158, 11] as [number, number, number],    
+  groupD: [139, 92, 246] as [number, number, number],    
+  groupE: [108, 117, 125] as [number, number, number]    
+};
+
+// Note: Utility functions formatCurrencyShort and formatCurrencyCompact 
+// are already defined in the monthly chart section above
+
+/**
+ * Draws a professional monthly sales chart on PDF
+ * Features improved code organization, better naming, and enhanced visual styling
+ */
+const drawMonthlyChart = (): void => {
+  // Initialize new page
+
+  const pageConfig = {
+    width: doc.internal.pageSize.getWidth(),
+    height: doc.internal.pageSize.getHeight(),
+    margin: PAGE_MARGIN
+  };
+
+  const monthlyPageConfig = {
+    width: doc.internal.pageSize.getWidth(),
+    height: doc.internal.pageSize.getHeight(),
+    margin: PAGE_MARGIN
+  };
+
+  const chartConfig = {
+    width: monthlyPageConfig.width - 2 * monthlyPageConfig.margin - 60, // Kurangi 60px untuk margin kiri-kanan tambahan
+    height: 280,
+    x: monthlyPageConfig.margin + 30, // Tambah 30px margin kiri
+    y: 0, // Will be set after drawing header
+    barSpacing: 0.3, // 30% spacing between bars for better proportions
+    gridLines: 6,
+    topPadding: 60, // Tambah dari 40px ke 60px untuk ruang atas lebih luas
+    bottomPadding: 40, // Tambah dari 25px ke 40px untuk ruang bawah lebih luas
+    leftPadding: 40, // Ruang untuk Y-axis labels
+    rightPadding: 20 // Ruang margin kanan
+  };
+
+  // Draw chart header
+  drawChartHeader();
+  
+  // Set chart Y position after header
+  chartConfig.y = currentY;
+  
+  // Get and validate data
+  const monthlyData = getMonthlyTotals();
+  if (!monthlyData || monthlyData.length === 0) {
+    drawNoDataMessage();
+    return;
+  }
+
+  // Calculate chart dimensions
+  const chartMetrics = calculateChartMetrics(monthlyData, chartConfig);
+  
+  // Draw chart components
+  drawChartAxes(chartConfig);
+  drawYAxisLabelsAndGrid(chartConfig, chartMetrics);
+  drawBarsWithLabels(monthlyData, chartConfig, chartMetrics);
+  drawXAxisLabels(monthlyData, chartConfig);
+  
+  // Update position for next section
+  currentY += chartConfig.height + 70; // Tambah dari 50 ke 70 untuk jarak ke section berikutnya
+  drawSectionSeparator(15);
+};
+
+/**
+ * Draws the chart header with title and description
+ */
+const drawChartHeader = (): void => {
+  // Main title
+  currentY += 25; 
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(chartColors.primaryDark[0], chartColors.primaryDark[1], chartColors.primaryDark[2]);
+  doc.text('Monthly Sales Analysis', PAGE_MARGIN, currentY);
+  currentY += 20;
+  
+  // Subtitle/description
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(chartColors.textSecondary[0], chartColors.textSecondary[1], chartColors.textSecondary[2]);
+  doc.text('Chart comparing total sales per month within the reporting period', PAGE_MARGIN, currentY);
+  currentY += 10; // Tambah dari 35 ke 45 untuk jarak lebih luas ke chart
+};
+
+/**
+ * Calculates chart metrics based on data and configuration
+ */
+const calculateChartMetrics = (data: MonthlyData[], config: ChartConfig) => {
+  const maxValue = Math.max(...data.map(item => item.total));
+  const barCount = data.length;
+  
+  // Calculate available space for bars (excluding left and right padding)
+  const availableWidth = config.width - config.leftPadding - config.rightPadding;
+  const totalBarWidth = availableWidth / barCount;
+  const barSpacing = totalBarWidth * config.barSpacing;
+  const actualBarWidth = totalBarWidth - barSpacing;
+
+  return {
+    maxValue,
+    barCount,
+    totalBarWidth,
+    barSpacing,
+    actualBarWidth,
+    // Add 20% padding for better visual balance and space for labels
+    paddedMaxValue: maxValue * 1.2,
+    // Effective chart height (excluding top and bottom padding)
+    effectiveHeight: config.height - config.topPadding - config.bottomPadding
+  };
+};
+
+/**
+ * Draws chart axes with proper styling
+ */
+const drawChartAxes = (config: ChartConfig): void => {
+  doc.setDrawColor(chartColors.borderPrimary[0], chartColors.borderPrimary[1], chartColors.borderPrimary[2]);
+  doc.setLineWidth(1);
+  
+  const chartStartY = config.y + config.topPadding;
+  const chartEndY = chartStartY + (config.height - config.topPadding - config.bottomPadding);
+  const axisStartX = config.x + config.leftPadding;
+  
+  // Y-axis (vertical line)
+  doc.line(
+    axisStartX,
+    chartStartY, 
+    axisStartX, 
+    chartEndY
+  );
+  
+  // X-axis (horizontal line)
+  doc.line(
+    axisStartX, 
+    chartEndY, 
+    config.x + config.width - config.rightPadding, 
+    chartEndY
+  );
+};
+
+/**
+ * Draws Y-axis labels and horizontal grid lines
+ */
+const drawYAxisLabelsAndGrid = (config: ChartConfig, metrics: ChartMetrics): void => {
+  const { gridLines } = config;
+  const { paddedMaxValue } = metrics;
+  
+  const chartStartY = config.y + config.topPadding;
+  const effectiveHeight = metrics.effectiveHeight;
+  const axisStartX = config.x + config.leftPadding;
+
+  for (let i = 0; i <= gridLines; i++) {
+    const yValue = (paddedMaxValue * i) / gridLines;
+    const yPosition = chartStartY + effectiveHeight - (effectiveHeight * i) / gridLines;
+    
+    // Draw grid line (skip the bottom line as it's the X-axis)
+    if (i > 0) {
+      doc.setDrawColor(chartColors.gridLight[0], chartColors.gridLight[1], chartColors.gridLight[2]);
+      doc.setLineWidth(0.3);
+      doc.line(axisStartX + 1, yPosition, config.x + config.width - config.rightPadding, yPosition);
+    }
+    
+    // Draw Y-axis label
+    drawYAxisLabel(yValue, axisStartX, yPosition);
+  }
+};
+
+/**
+ * Draws individual Y-axis label with proper formatting
+ */
+const drawYAxisLabel = (value: number, x: number, y: number): void => {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(chartColors.textMuted[0], chartColors.textMuted[1], chartColors.textMuted[2]);
+  
+  const formattedValue = formatCurrencyShort(value);
+  const textWidth = doc.getTextWidth(formattedValue);
+  
+  doc.text(formattedValue, x - textWidth - 5, y + 2);
+};
+
+/**
+ * Draws bars with values and improved visual styling
+ */
+const drawBarsWithLabels = (
+  data: MonthlyData[], 
+  config: ChartConfig, 
+  metrics: ChartMetrics
+): void => {
+  const chartStartY = config.y + config.topPadding;
+  const axisStartX = config.x + config.leftPadding;
+  
+  data.forEach((item, index) => {
+    const barHeight = (item.total / metrics.paddedMaxValue) * metrics.effectiveHeight;
+    const barX = axisStartX + (metrics.totalBarWidth * index) + (metrics.barSpacing / 2);
+    const barY = chartStartY + metrics.effectiveHeight - barHeight;
+    
+    // Only draw bar if height is significant
+    if (barHeight > 2) {
+      // Draw bar with gradient effect simulation
+      drawStyledBar(barX, barY, metrics.actualBarWidth, barHeight);
+      
+      // Draw value label above bar
+      drawBarValueLabel(item.total, barX, barY, metrics.actualBarWidth);
+    } else {
+      // For very small values, still show the label
+      drawBarValueLabel(item.total, barX, chartStartY + metrics.effectiveHeight - 10, metrics.actualBarWidth);
+    }
+  });
+};
+
+/**
+ * Draws a styled bar with visual enhancements
+ */
+const drawStyledBar = (x: number, y: number, width: number, height: number): void => {
+  // Main bar
+  doc.setFillColor(chartColors.chartPrimary[0], chartColors.chartPrimary[1], chartColors.chartPrimary[2]);
+  doc.rect(x, y, width, height, 'F');
+  
+  // Add subtle border for better definition
+  doc.setDrawColor(chartColors.chartPrimaryDark[0], chartColors.chartPrimaryDark[1], chartColors.chartPrimaryDark[2]);
+  doc.setLineWidth(0.5);
+  doc.rect(x, y, width, height, 'S');
+  
+  // Add highlight effect (top portion)
+  if (height > 20) {
+    doc.setFillColor(chartColors.chartHighlight[0], chartColors.chartHighlight[1], chartColors.chartHighlight[2]);
+    doc.rect(x, y, width, Math.min(height * 0.3, 15), 'F');
+  }
+};
+
+/**
+ * Draws value label above each bar
+ */
+const drawBarValueLabel = (value: number, x: number, y: number, width: number): void => {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(chartColors.textPrimary[0], chartColors.textPrimary[1], chartColors.textPrimary[2]);
+  
+  const formattedValue = formatCurrencyCompact(value);
+  const textWidth = doc.getTextWidth(formattedValue);
+  const centerX = x + width / 2 - textWidth / 2;
+  
+  // Add white background with slight padding for better readability
+  const padding = 1.5;
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(chartColors.gridLight[0], chartColors.gridLight[1], chartColors.gridLight[2]);
+  doc.setLineWidth(0.2);
+  doc.rect(centerX - padding, y - 12, textWidth + padding * 2, 8, 'FD');
+  
+  doc.text(formattedValue, centerX, y - 6);
+};
+
+/**
+ * Draws X-axis labels (month names)
+ */
+const drawXAxisLabels = (data: MonthlyData[], config: ChartConfig): void => {
+  const metrics = calculateChartMetrics(data, config);
+  const chartEndY = config.y + config.topPadding + metrics.effectiveHeight;
+  const axisStartX = config.x + config.leftPadding;
+  
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(chartColors.textSecondary[0], chartColors.textSecondary[1], chartColors.textSecondary[2]);
+  
+  data.forEach((item, index) => {
+    const barX = axisStartX + (metrics.totalBarWidth * index) + (metrics.barSpacing / 2);
+    const centerX = barX + metrics.actualBarWidth / 2;
+    const monthWidth = doc.getTextWidth(item.month);
+    
+    doc.text(
+      item.month, 
+      centerX - monthWidth / 2, 
+      chartEndY + 18 // Tambah jarak dari 15 ke 18
+    );
+  });
+};
+
+/**
+ * Draws message when no data is available
+ */
+const drawNoDataMessage = (): void => {
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(12);
+  doc.setTextColor(chartColors.textMuted[0], chartColors.textMuted[1], chartColors.textMuted[2]);
+  doc.text('Tidak ada data penjualan untuk ditampilkan', PAGE_MARGIN, currentY);
+  currentY += 30;
+};
+
+/**
+ * Formats currency values for chart display (shortened version)
+ */
+const formatCurrencyShort = (value: number): string => {
+  if (value === 0) return '0';
+  if (value >= 1000000000) {
+    return `${(value / 1000000000).toFixed(1)}M`;
+  } else if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}jt`;
+  } else if (value >= 1000) {
+    return `${Math.round(value / 1000)}rb`;
+  }
+  return `${Math.round(value)}`;
+};
+
+/**
+ * Formats currency values in compact format for bar labels
+ */
+const formatCurrencyCompact = (value: number): string => {
+  if (value === 0) return '0';
+  if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}jt`;
+  } else if (value >= 1000) {
+    return `${Math.round(value / 1000)}rb`;
+  }
+  return `${Math.round(value)}`;
+};
+
+// Type definitions for better code structure
+interface ChartConfig {
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  barSpacing: number;
+  gridLines: number;
+  topPadding: number;
+  bottomPadding: number;
+  leftPadding: number;
+  rightPadding: number;
+}
+
+interface ChartMetrics {
+  maxValue: number;
+  barCount: number;
+  totalBarWidth: number;
+  barSpacing: number;
+  actualBarWidth: number;
+  paddedMaxValue: number;
+  effectiveHeight: number;
+}
+
+interface MonthlyData {
+  month: string;
+  total: number;
+}
+
+// Constants for better maintainability
+const PAGE_MARGIN = 30;
+
+// Enhanced color scheme untuk chart
+const chartColors = {
+  primaryDark: [33, 37, 41] as [number, number, number],
+  textPrimary: [33, 37, 41] as [number, number, number],
+  textSecondary: [108, 117, 125] as [number, number, number],
+  textMuted: [134, 142, 150] as [number, number, number],
+  chartPrimary: [255, 193, 7] as [number, number, number], // Warm yellow/orange
+  chartPrimaryDark: [255, 171, 0] as [number, number, number],
+  chartHighlight: [255, 235, 156] as [number, number, number],
+  borderPrimary: [206, 212, 218] as [number, number, number],
+  gridLight: [233, 236, 239] as [number, number, number]
+};
 
 // ==================== DATA TABLE ====================
 const drawDataTable = (): void => {
@@ -1087,6 +1733,8 @@ const drawDataTable = (): void => {
     drawHeader();
     drawSummaryCards();
     drawGroupPerformance();
+    drawGroupPerformanceChart();
+    drawMonthlyChart();
     drawDataTable();
 
     // Generate filename with timestamp
@@ -1221,7 +1869,7 @@ const drawDataTable = (): void => {
                 Achievement: {getTotalAchievement().toFixed(2)}%
               </div>
               <div className="text-xs text-muted-foreground mt-2">
-                💡 Klik target di group cards untuk mengedit
+                ðŸ’¡ Klik target di group cards untuk mengedit
               </div>
             </CardContent>
           </Card>
@@ -1236,7 +1884,7 @@ const drawDataTable = (): void => {
                 Jumlah keseluruhan purchase order
               </div>
               <div className="text-xs text-muted-foreground mt-2">
-                💡 Total quantity dari semua PO
+                ðŸ’¡ Total quantity dari semua PO
               </div>
             </CardContent>
           </Card>
