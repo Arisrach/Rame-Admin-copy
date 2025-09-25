@@ -1616,6 +1616,15 @@ const drawDataTable = (): void => {
   doc.text('Detailed Purchase Order Data', margin, currentY);
   addSpacing(25);
 
+  // === Helper: warna lebih lembut ===
+  function lightenColor(rgb: [number, number, number], factor: number = 0.7): [number, number, number] {
+    return [
+      Math.round(rgb[0] + (255 - rgb[0]) * factor),
+      Math.round(rgb[1] + (255 - rgb[1]) * factor),
+      Math.round(rgb[2] + (255 - rgb[2]) * factor),
+    ];
+  }
+
   // Prepare table data
   const tableData: string[][] = (data as any[]).map((item: any, index: number): string[] => [
     (index + 1).toString(),
@@ -1669,7 +1678,7 @@ const drawDataTable = (): void => {
     startY: currentY,
     theme: 'striped',
     styles: {
-      fontSize: availableWidth < 800 ? 7 : 8, // shrink font kalau sempit
+      fontSize: availableWidth < 800 ? 7 : 8,
       cellPadding: 3,
       lineColor: colors.border,
       lineWidth: 0.5,
@@ -1691,20 +1700,29 @@ const drawDataTable = (): void => {
     margin: { top: 30, left: margin, right: margin, bottom: 40 },
     pageBreak: 'auto',
     showHead: 'everyPage',
-    didDrawCell: function(data: any) {
-      if (data.column.index === 1 && data.section === 'body') {
-        const group = data.cell.text[0];
+
+    // 🔹 Pewarnaan custom
+    didParseCell: function (data: any) {
+      if (data.section === 'body') {
+        const group = data.row.raw[1]; // ambil nilai Group
         if (group in colors.groups) {
           const groupColor = getGroupColor(group);
-          doc.setFillColor(groupColor[0], groupColor[1], groupColor[2]);
-          doc.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
-          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-          doc.setFontSize(7);
-          doc.setFont('helvetica', 'bold');
-          doc.text(group, data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 2, { align: 'center' });
+
+          if (data.column.index === 1) {
+            // Kolom Group → tajam
+            data.cell.styles.fillColor = groupColor;
+            data.cell.styles.textColor = colors.white;
+            data.cell.styles.fontStyle = 'bold';
+          } else {
+            // Kolom lain → versi lembut
+            const softColor = lightenColor(groupColor, 0.7);
+            data.cell.styles.fillColor = softColor;
+            data.cell.styles.textColor = colors.dark;
+          }
         }
       }
     },
+
     didDrawPage: function(data: any) {
       const pageNumber = data.pageNumber;
       const totalPages = doc.getNumberOfPages();
@@ -1727,6 +1745,7 @@ const drawDataTable = (): void => {
     }
   });
 };
+
 
   // ==================== MAIN EXECUTION ====================
   try {
