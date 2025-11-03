@@ -27,22 +27,22 @@ model PurchaseOrder {
   id              Int      @id @default(autoincrement())
   name            String
   groupName       String   @map("group_name")
-  januari         Float    @default(0)
-  februari        Float    @default(0)
-  maret           Float    @default(0)
-  april           Float    @default(0)
-  mei             Float    @default(0)
-  juni            Float    @default(0)
-  juli            Float    @default(0)
-  agustus         Float    @default(0)
-  september       Float    @default(0)
-  oktober         Float    @default(0)
-  november        Float    @default(0)
-  desember        Float    @default(0)
+  januari         BigInt    @default(0)
+  februari        BigInt    @default(0)
+  maret           BigInt    @default(0)
+  april           BigInt    @default(0)
+  mei             BigInt    @default(0)
+  juni            BigInt    @default(0)
+  juli            BigInt    @default(0)
+  agustus         BigInt    @default(0)
+  september       BigInt    @default(0)
+  oktober         BigInt    @default(0)
+  november        BigInt    @default(0)
+  desember        BigInt    @default(0)
   totalQtyPO      Int      @default(0)
-  totalValueSales Float    @default(0)
-  targetGroup     Float?
-  achieve         Float?
+  totalValueSales BigInt    @default(0)
+  targetGroup     BigInt?
+  achieve         BigInt?
   year            Int      @default(2025)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

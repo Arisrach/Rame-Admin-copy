@@ -34,7 +34,7 @@ declare module 'jspdf' {
 interface PurchaseOrderData {
   no: number;
   name: string;
-  januari: number; // BigInt comes as string from API and is converted to number
+  januari: number;
   februari: number;
   maret: number;
   april: number;
@@ -87,20 +87,6 @@ const sampleData: PurchaseOrderData[] = [
   { no: 5, name: "Yoga Alamsyah", januari: 0, februari: 0, maret: 0, april: 0, mei: 0, juni: 0, juli: 0, agustus: 0, september: 0, oktober: 0, november: 0, desember: 0, totalQtyPO: 0, totalValueSales: 0, group: "Other", targetGroup: 0 },
 ];
 
-// Helper function to safely parse values as numbers (converted from BigInt)
-const safeParseNumber = (value: string): number => {
-  if (!value) return 0;
-  try {
-    // Parse as float and round to integer since we're using BigInt in the database
-    const parsed = parseFloat(value);
-    if (isNaN(parsed)) return 0;
-    return Math.round(parsed);
-  } catch (e) {
-    // If conversion fails, return 0
-    return 0;
-  }
-};
-
 export default function DashboardPage() {
   const [data, setData] = useState<PurchaseOrderData[]>([]);
   const [editingCell, setEditingCell] = useState<{row: number, col: string} | null>(null);
@@ -150,23 +136,23 @@ export default function DashboardPage() {
         id: item.id,
         no: index + 1,
         name: item.name,
-        januari: (typeof item.januari === 'string' ? Number(item.januari) : item.januari) || 0,
-        februari: (typeof item.februari === 'string' ? Number(item.februari) : item.februari) || 0,
-        maret: (typeof item.maret === 'string' ? Number(item.maret) : item.maret) || 0,
-        april: (typeof item.april === 'string' ? Number(item.april) : item.april) || 0,
-        mei: (typeof item.mei === 'string' ? Number(item.mei) : item.mei) || 0,
-        juni: (typeof item.juni === 'string' ? Number(item.juni) : item.juni) || 0,
-        juli: (typeof item.juli === 'string' ? Number(item.juli) : item.juli) || 0,
-        agustus: (typeof item.agustus === 'string' ? Number(item.agustus) : item.agustus) || 0,
-        september: (typeof item.september === 'string' ? Number(item.september) : item.september) || 0,
-        oktober: (typeof item.oktober === 'string' ? Number(item.oktober) : item.oktober) || 0,
-        november: (typeof item.november === 'string' ? Number(item.november) : item.november) || 0,
-        desember: (typeof item.desember === 'string' ? Number(item.desember) : item.desember) || 0,
+        januari: item.januari || 0,
+        februari: item.februari || 0,
+        maret: item.maret || 0,
+        april: item.april || 0,
+        mei: item.mei || 0,
+        juni: item.juni || 0,
+        juli: item.juli || 0,
+        agustus: item.agustus || 0,
+        september: item.september || 0,
+        oktober: item.oktober || 0,
+        november: item.november || 0,
+        desember: item.desember || 0,
         totalQtyPO: item.totalQtyPO || 0,
-        totalValueSales: (typeof item.totalValueSales === 'string' ? Number(item.totalValueSales) : item.totalValueSales) || 0,
+        totalValueSales: item.totalValueSales || 0,
         group: item.groupName,
-        targetGroup: item.targetGroup ? (typeof item.targetGroup === 'string' ? Number(item.targetGroup) : item.targetGroup) : 0,
-        achieve: item.achieve ? (typeof item.achieve === 'string' ? Number(item.achieve) : item.achieve) : 0
+        targetGroup: item.targetGroup || 0,
+        achieve: item.achieve || 0
       }));
       console.log('Transformed data:', transformedData);
       setData(transformedData);
@@ -323,7 +309,7 @@ export default function DashboardPage() {
         console.log('Updated targetGroup to:', groupTargets[editValue] || 0);
       } else {
         // Handle numeric value editing
-        const numericValue = safeParseNumber(editValue) || 0;
+        const numericValue = parseFloat(editValue) || 0;
         (newData[editingCell.row] as any)[editingCell.col] = numericValue;
         console.log('Updated', editingCell.col, 'to:', numericValue);
         
@@ -362,22 +348,22 @@ export default function DashboardPage() {
             id: rowData.id,
             name: rowData.name,
             group: rowData.group,
-            januari: Number(rowData.januari),
-            februari: Number(rowData.februari),
-            maret: Number(rowData.maret),
-            april: Number(rowData.april),
-            mei: Number(rowData.mei),
-            juni: Number(rowData.juni),
-            juli: Number(rowData.juli),
-            agustus: Number(rowData.agustus),
-            september: Number(rowData.september),
-            oktober: Number(rowData.oktober),
-            november: Number(rowData.november),
-            desember: Number(rowData.desember),
-            totalQtyPO: Number(rowData.totalQtyPO),
-            totalValueSales: Number(rowData.totalValueSales),
-            targetGroup: rowData.targetGroup ? Number(rowData.targetGroup) : null,
-            achieve: rowData.achieve ? Number(rowData.achieve) : null
+            januari: rowData.januari,
+            februari: rowData.februari,
+            maret: rowData.maret,
+            april: rowData.april,
+            mei: rowData.mei,
+            juni: rowData.juni,
+            juli: rowData.juli,
+            agustus: rowData.agustus,
+            september: rowData.september,
+            oktober: rowData.oktober,
+            november: rowData.november,
+            desember: rowData.desember,
+            totalQtyPO: rowData.totalQtyPO,
+            totalValueSales: rowData.totalValueSales,
+            targetGroup: rowData.targetGroup,
+            achieve: rowData.achieve
           };
 
           console.log('Sending request to API:', purchaseOrder);
@@ -449,22 +435,22 @@ export default function DashboardPage() {
         id: rowData.id,
         name: rowData.name,
         group: rowData.group,
-        januari: Number(rowData.januari),
-        februari: Number(rowData.februari),
-        maret: Number(rowData.maret),
-        april: Number(rowData.april),
-        mei: Number(rowData.mei),
-        juni: Number(rowData.juni),
-        juli: Number(rowData.juli),
-        agustus: Number(rowData.agustus),
-        september: Number(rowData.september),
-        oktober: Number(rowData.oktober),
-        november: Number(rowData.november),
-        desember: Number(rowData.desember),
-        totalQtyPO: Number(rowData.totalQtyPO),
-        totalValueSales: Number(rowData.totalValueSales),
-        targetGroup: rowData.targetGroup ? Number(rowData.targetGroup) : null,
-        achieve: rowData.achieve ? Number(rowData.achieve) : null
+        januari: rowData.januari,
+        februari: rowData.februari,
+        maret: rowData.maret,
+        april: rowData.april,
+        mei: rowData.mei,
+        juni: rowData.juni,
+        juli: rowData.juli,
+        agustus: rowData.agustus,
+        september: rowData.september,
+        oktober: rowData.oktober,
+        november: rowData.november,
+        desember: rowData.desember,
+        totalQtyPO: rowData.totalQtyPO,
+        totalValueSales: rowData.totalValueSales,
+        targetGroup: rowData.targetGroup,
+        achieve: rowData.achieve
       };
       
       console.log('=== PREPARING TO SEND GROUP CHANGE REQUEST ===');
@@ -552,7 +538,7 @@ export default function DashboardPage() {
 
   const handleTargetSave = async () => {
     if (editingTarget) {
-      const newTarget = safeParseNumber(targetEditValue) || 0;
+      const newTarget = parseFloat(targetEditValue) || 0;
       const newGroupTargets = {...groupTargets, [editingTarget]: newTarget};
       setGroupTargets(newGroupTargets);
       
@@ -575,21 +561,21 @@ export default function DashboardPage() {
             id: member.id,
             name: member.name,
             group: member.group,
-            januari: Number(member.januari),
-            februari: Number(member.februari),
-            maret: Number(member.maret),
-            april: Number(member.april),
-            mei: Number(member.mei),
-            juni: Number(member.juni),
-            juli: Number(member.juli),
-            agustus: Number(member.agustus),
-            september: Number(member.september),
-            oktober: Number(member.oktober),
-            november: Number(member.november),
-            desember: Number(member.desember),
-            totalQtyPO: Number(member.totalQtyPO),
-            totalValueSales: Number(member.totalValueSales),
-            targetGroup: Number(newTarget)
+            januari: member.januari,
+            februari: member.februari,
+            maret: member.maret,
+            april: member.april,
+            mei: member.mei,
+            juni: member.juni,
+            juli: member.juli,
+            agustus: member.agustus,
+            september: member.september,
+            oktober: member.oktober,
+            november: member.november,
+            desember: member.desember,
+            totalQtyPO: member.totalQtyPO,
+            totalValueSales: member.totalValueSales,
+            targetGroup: newTarget
           };
           
           const response = await fetch('/api/purchase-orders', {
@@ -683,7 +669,7 @@ export default function DashboardPage() {
       'Total Value Sales': item.totalValueSales,
       'Group': item.group,
       'Target Group': item.targetGroup || 0,
-      'Achievement %': item.targetGroup ? ((Number(item.totalValueSales) / Number(item.targetGroup)) * 100).toFixed(2) : 0
+      'Achievement %': item.targetGroup ? ((item.totalValueSales / item.targetGroup) * 100).toFixed(2) : 0
     })));
     
     const workbook = XLSX.utils.book_new();
@@ -899,7 +885,7 @@ const drawGroupPerformance = (): void => {
   groups.forEach((group: string, index: number) => {
     const groupTotal = getGroupTotals(group);
     const groupTarget = (groupTargets as Record<string, number>)[group] || 0;
-    const achievement = groupTarget ? ((Number(groupTotal) / Number(groupTarget)) * 100) : 0;
+    const achievement = groupTarget ? ((groupTotal / groupTarget) * 100) : 0;
 
     let x, y, cardWidth;
 
@@ -1055,11 +1041,11 @@ const getGroupPerformanceData = (): GroupData[] => {
   data.forEach(item => {
     const group = item.group;
     if (groupTotals.hasOwnProperty(group)) {
-      groupTotals[group] = Number(groupTotals[group]) + Number(item.totalValueSales);
+      groupTotals[group] += item.totalValueSales;
     }
   });
   
-  const totalSales = Object.values(groupTotals).reduce((sum, val) => sum + Number(val), 0);
+  const totalSales = Object.values(groupTotals).reduce((sum, val) => sum + val, 0);
   
   // Convert to GroupData array
   return availableGroups.map((groupName, index) => {
@@ -1791,16 +1777,16 @@ const drawDataTable = (): void => {
 
   const getGroupTotals = (group: string) => {
     const groupData = data.filter(item => item.group === group);
-    return groupData.reduce((sum, item) => sum + Number(item.totalValueSales), 0);
+    return groupData.reduce((sum, item) => sum + item.totalValueSales, 0);
   };
 
   const getTotalSales = () => {
-    return data.reduce((sum, item) => sum + Number(item.totalValueSales), 0);
+    return data.reduce((sum, item) => sum + item.totalValueSales, 0);
   };
 
   const getGroupAchievement = (group: string) => {
     const groupData = data.filter(item => item.group === group);
-    const totalGroupSales = groupData.reduce((sum, item) => sum + Number(item.totalValueSales), 0);
+    const totalGroupSales = groupData.reduce((sum, item) => sum + item.totalValueSales, 0);
     const targetGroup = groupTargets[group] || 0;
     
     if (targetGroup === 0) return 0;

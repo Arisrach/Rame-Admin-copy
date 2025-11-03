@@ -2,25 +2,30 @@ export interface PurchaseOrder {
   id: number;
   name: string;
   groupName: string;
-  januari: number;
-  februari: number;
-  maret: number;
-  april: number;
-  mei: number;
-  juni: number;
-  juli: number;
-  agustus: number;
-  september: number;
-  oktober: number;
-  november: number;
-  desember: number;
+  januari: bigint | number;
+  februari: bigint | number;
+  maret: bigint | number;
+  april: bigint | number;
+  mei: bigint | number;
+  juni: bigint | number;
+  juli: bigint | number;
+  agustus: bigint | number;
+  september: bigint | number;
+  oktober: bigint | number;
+  november: bigint | number;
+  desember: bigint | number;
   totalQtyPO: number;
-  totalValueSales: number;
-  targetGroup: number | null;
-  achieve: number | null;
+  totalValueSales: bigint | number;
+  targetGroup: bigint | number | null;
+  achieve: bigint | number | null;
   year: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// UI representation that uses 'group' instead of 'group_name'
+export interface PurchaseOrderUIData extends Omit<PurchaseOrder, 'groupName'> {
+  group: string;
 }
 
 export interface Admin {

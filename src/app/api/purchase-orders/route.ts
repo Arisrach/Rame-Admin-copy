@@ -1,10 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PurchaseOrdersService } from '@/lib/purchase-orders-service';
 
+// Helper function to serialize BigInt values for JSON
+function serializeBigInt(obj: any): any {
+  return JSON.parse(JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'bigint') {
+      // Check if the BigInt value is within the safe integer range for JavaScript
+      const numValue = Number(value);
+      if (Number.isSafeInteger(numValue)) {
+        return numValue;
+      } else {
+        // For very large BigInt values, return as string
+        return value.toString();
+      }
+    }
+    return value;
+  }));
+}
+
 export async function GET() {
   try {
     const orders = await PurchaseOrdersService.getAll();
-    return NextResponse.json(orders);
+    // Serialize BigInt values for JSON response
+    return NextResponse.json(serializeBigInt(orders));
   } catch (error: any) {
     console.error('Error fetching purchase orders:', error);
     return NextResponse.json(
@@ -18,7 +36,8 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
     const order = await PurchaseOrdersService.create(data);
-    return NextResponse.json(order);
+    // Serialize BigInt values for JSON response
+    return NextResponse.json(serializeBigInt(order));
   } catch (error: any) {
     console.error('Error creating purchase order:', error);
     return NextResponse.json(
@@ -32,7 +51,8 @@ export async function PUT(request: NextRequest) {
   try {
     const data = await request.json();
     const order = await PurchaseOrdersService.update(data);
-    return NextResponse.json(order);
+    // Serialize BigInt values for JSON response
+    return NextResponse.json(serializeBigInt(order));
   } catch (error: any) {
     console.error('Error updating purchase order:', error);
     return NextResponse.json(

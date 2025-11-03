@@ -1,11 +1,6 @@
 import { PurchaseOrder, PurchaseOrderUIData } from './types';
 import { prisma } from './db';
 
-// UI representation that uses 'group' instead of 'group_name'
-export interface PurchaseOrderUIData extends Omit<PurchaseOrder, 'group_name'> {
-  group: string;
-}
-
 export class PurchaseOrdersService {
   static async getAll(): Promise<PurchaseOrder[]> {
     try {
