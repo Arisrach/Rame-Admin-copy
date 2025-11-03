@@ -1546,7 +1546,9 @@ const formatCurrencyShort = (value: number): string => {
  */
 const formatCurrencyCompact = (value: number): string => {
   if (value === 0) return '0';
-  if (value >= 1000000) {
+  if (value >= 1000000000) {
+    return `${(value / 1000000000).toFixed(1)}M`;
+  }if (value >= 1000000) {
     return `${(value / 1000000).toFixed(1)}jt`;
   } else if (value >= 1000) {
     return `${Math.round(value / 1000)}rb`;
@@ -1888,7 +1890,7 @@ const drawDataTable = (): void => {
                 Achievement: {getTotalAchievement().toFixed(2)}%
               </div>
               <div className="text-xs text-muted-foreground mt-2">
-                ðŸ’¡ Klik target di group cards untuk mengedit
+                💡 Klik target di group cards untuk mengedit
               </div>
             </CardContent>
           </Card>
@@ -1903,7 +1905,7 @@ const drawDataTable = (): void => {
                 Jumlah keseluruhan purchase order
               </div>
               <div className="text-xs text-muted-foreground mt-2">
-                ðŸ’¡ Total quantity dari semua PO
+                💡 Total quantity dari semua PO
               </div>
             </CardContent>
           </Card>
