@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useRouter } from 'next/navigation';
 
 const loginSchema = z.object({
   email: z.string().email("Email tidak valid"),
@@ -18,7 +19,17 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  
+  const router = useRouter();
+
+  // Check if user is already authenticated
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      // User is already logged in, redirect to dashboard
+      router.push('/dashboard');
+    }
+  }, [router]);
+
   const {
     register,
     handleSubmit,
@@ -41,6 +52,13 @@ export default function LoginPage() {
       const result = await response.json();
 
       if (response.ok) {
+        // In a real application, you would receive a token from the backend
+        // For now, we'll set a simple cookie to simulate authentication
+        document.cookie = "auth_token=demo_token; path=/; max-age=3600"; // 1 hour expiry
+        
+        // Also store user data in localStorage for client-side access
+        localStorage.setItem('user', JSON.stringify(result.user));
+        
         alert(`Login berhasil! Selamat datang, ${result.user.name || result.user.email}`);
         // Redirect to dashboard
         window.location.href = '/dashboard';

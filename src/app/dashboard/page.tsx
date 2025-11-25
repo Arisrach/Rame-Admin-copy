@@ -12,6 +12,7 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartConfig } from '@/components/ui/chart';
 import { PurchaseOrdersService } from '@/lib/purchase-orders-service';
 import { PurchaseOrder } from '@/lib/types';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 // Loading spinner component
 const LoadingSpinner = () => (
@@ -102,6 +103,14 @@ const safeParseNumber = (value: string): number => {
 };
 
 export default function DashboardPage() {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
+  );
+}
+
+function DashboardContent() {
   const [data, setData] = useState<PurchaseOrderData[]>([]);
   const [editingCell, setEditingCell] = useState<{row: number, col: string} | null>(null);
   const [editValue, setEditValue] = useState<string>("");
