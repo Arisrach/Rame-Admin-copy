@@ -26,13 +26,13 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Apply middleware to specific paths - protect all routes except login, logout, and auth API
+// Apply middleware to specific paths - protect dashboard and other protected routes
 export const config = {
   matcher: [
-    /*
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
-    */
-    // More specific matcher:
-    '/((?!api/auth|logout|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(css|js|svg|png|jpg|jpeg|gif|ico|webp)$).*)',
+    // Protect specific routes that require authentication
+    '/dashboard/:path*',
+    // Add more protected routes here as needed
+    // '/admin/:path*',
+    // '/settings/:path*',
   ],
 };
