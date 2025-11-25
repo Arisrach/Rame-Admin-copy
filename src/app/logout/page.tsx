@@ -12,7 +12,7 @@ export default function LogoutPage() {
     logout();
     
     // Also clear the authentication cookie
-    document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=strict";
     
     // Redirect to login page after a short delay
     const timer = setTimeout(() => {

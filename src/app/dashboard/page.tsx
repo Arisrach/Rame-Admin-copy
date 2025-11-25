@@ -1886,7 +1886,7 @@ const drawDataTable = (): void => {
                 {crudLoading ? 'Processing...' : 'Export PDF'}
               </Button>
               <Button 
-                onClick={() => window.location.href = '/'}
+                onClick={() => window.location.href = '/logout'}
                 disabled={crudLoading}
               >
                 {crudLoading ? 'Processing...' : 'Logout'}
